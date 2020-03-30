@@ -1,0 +1,192 @@
+---
+title: "10_Regression_analysis"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### 1. Load packages, set working directory, and prevent scientific notation
+```{r get_packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(rgdal)
+library(sf)
+library(MatchIt) ## Package with Propensity Score Matching
+library(optmatch)
+options(scipen = 9999) ## Avoid scientific notation
+setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown") # Set working directory to make relative filepath names work
+
+```
+
+Simple linear regression equation
+
+$Annual~kg/H = croptype + CDFA~organic + field~size + soil~quality$
+
+#### 2. Prepare regression dataframe
+
+# Get data and make a dataframe to be used in regression analysis. 
+This is not important, it just gets rid of '-ORGANIC' from the commodity column and groups lettuce together, rather than having 'LETTUCE LEAF' and 'LETTUCE' as separate crop types. 
+```{r get_data, echo=TRUE, message=FALSE, warning=FALSE}
+
+df = readOGR("../R_output/spatial/KernAg_CDFA_pest/2017/B50/KernAg_CDFA_Pest2017_B50.shp") %>% 
+  st_as_sf()
+
+output = df %>% 
+  separate(col = "COMM", 
+       into = c("COMM_x","COMM_y"), 
+       sep = "-",
+       remove = FALSE)
+  
+# Make all COMM columns characters for if() statement matching
+output$COMM=as.character(output$COMM)
+output$COMM_x=as.character(output$COMM_x)
+output$COMM_y=as.character(output$COMM_y)
+
+# This if() statement eliminates the word "ORGANIC" from commodity names, but keeps the full original name if the second column is not an NA or the word organic
+output$COMM_new <- ifelse(output$COMM_y == "ORGANIC"|is.na(output$COMM_y), 
+                           output$COMM_x, 
+                           output$COMM)
+
+ # Combine all lettuce categories into one
+ output$COMM_new <- ifelse(str_detect(output$COMM_new,"LETTUCE"),"LETTUCE",output$COMM_new)
+
+# Remove intermediate COMM columns
+output = output %>% 
+  dplyr::select(-COMM_x,-COMM_y)
+
+output$CDFA = ifelse(is.na(output$CDFA),0,1)
+
+matching = output %>% 
+     as.data.frame() %>% 
+     dplyr::select(-geometry) %>% 
+     group_by(COMM_new) %>% 
+     summarise(total_fields = n(),
+               cdfa_fields = sum(CDFA)) %>% 
+  filter(cdfa_fields > 4) %>% 
+  arrange(-cdfa_fields)
+
+crops_filter = c(matching$COMM_new)
+
+reg_df = output %>% 
+  as.data.frame() %>% 
+  filter(COMM_new %in% crops_filter) %>% 
+  select("croptype" = COMM_new, CDFA, STORIE_, ACRES, HE, acrstrt, N_crps_, 12:32)
+
+reg_df$croptype = as.factor(reg_df$croptype)
+reg_df$CDFA = as.factor(reg_df$CDFA)
+reg_df$KgPerHec = reg_df$KgPstAI/reg_df$HE
+
+crop_dummy = as.data.frame(model.matrix(~reg_df$croptype+0))
+names = colnames(crop_dummy) 
+names = substr(names,
+               start = nchar("reg_df$croptype")+1,
+               stop = nchar(names))
+
+colnames(crop_dummy) = names
+
+No_cropref_df = cbind(reg_df,crop_dummy)
+
+no_cropref_df = No_cropref_df %>% 
+  mutate(soil = STORIE_,
+    fieldsize = HE, 
+    KgAIpHe = KgPstAI/HE) %>% 
+  select(CDFA, soil, fieldsize, KgAIpHe, 29:47)
+
+cropref_df = reg_df %>% # Crop reference means there is a dummy variable associated with the croptype variable
+  mutate(croptype = as.factor(croptype),
+         soil = STORIE_,
+         fieldsize = HE,
+         KgAIpHe = KgPstAI/HE) %>% 
+  select(croptype, CDFA, soil, fieldsize, KgAIpHe)
+```
+
+
+# Simple Linear Regression -- Just seeing how R is recognizing/processing covariates
+```{r SLR}
+
+simple_reg_cropref = lm(KgAIpHe~., data = cropref_df) # Mainly to see how data is being read in regression
+summary(simple_reg_cropref) # Look at regression results
+
+simple_reg_NOcropref = lm(KgAIpHe ~ ., no_cropref_df)
+summary(simple_reg_NOcropref)
+
+```
+
+# Propensity score estimation
+```{r estimate_scores}
+
+propensity_logit = glm(CDFA ~ croptype + fieldsize + STORIE_, 
+                       family = binomial, 
+                       data = )
+
+# summary(propensity_logit)
+
+# Predict propensity scores and place in a new column
+reg_df$pscores = predict.glm(propensity_logit, 
+                             data.frame(croptype = reg_df$croptype,
+                                        ACRES = reg_df$ACRES,
+                                        STORIE_ = reg_df$STORIE_), 
+                             type = "response")
+```
+
+# Propensity score matching
+```{r find_matches}
+
+missingValue_filter = reg_df %>% # Remove incomplete cases -- Those with no STORIE_Index data
+  na.omit()
+
+# The following paragraph is the MatchIt package author's explanation of the matchit() function that I use below
+
+# matchit is the main command of the package MatchIt, which enables parametric models for causal inference to work better by selecting well-matched subsets of the original treated and control groups. MatchIt implements the suggestions of Ho, Imai, King, and Stuart (2004) for improving parametric statistical models by preprocessing data with nonparametric matching methods. MatchIt implements a wide range of sophisticated matching methods, making it possible to greatly reduce the dependence of causal inferences on hard-to-justify, but commonly made, statistical modeling assumptions. The software also easily fits into existing research practices since, after preprocessing with MatchIt, researchers can use whatever parametric model they would have used without MatchIt, but produce inferences with substantially more robustness and less sensitivity to modeling assumptions. 
+
+match = matchit(CDFA ~ croptype + ACRES + STORIE_, 
+                method = "optimal", # Nearest neighbor matching
+                ratio = 2,
+                replace = T,
+                data = missingValue_filter)
+# summary(match)
+
+# match.data outputs matched data sets from matchit()
+matches <- match.data(match)
+# dim(matches)
+```
+
+Look at difference in means between matches to see if they're closer than in the original data set. Differences should not be significant AKA fail to reject the null
+```{r check_matches}
+cov <- c('ACRES', 'STORIE_') # Covariates to check matches with
+
+matches %>%
+  group_by(CDFA) %>% # Seperate the two CDFA groups (1 = ORGANIC, 0 = CONVENTIONAL)
+  dplyr::select(one_of(cov)) %>%
+  summarise_all(funs(mean)) # Find the means of each covariate group within the org or conv groups
+
+# Checking another way
+t.test(matches[,3] ~ matches[,'CDFA']) 
+t.test(matches[,5] ~ matches[,'CDFA'])
+```
+
+
+# THE TWO PROPENSITY SCORE REGRESSION EQUATIONS
+************
+## Regression with **propensity scores as covariate**
+```{r reg_with_pscores}
+
+pscore_reg = lm(kg_per_H ~ croptype + CDFA + ACRES + STORIE_ + pscores, data = reg_df)
+summary(pscore_reg)
+
+```
+
+************
+## Regression on **matches data.frame**, *propensity score not used a covariate*
+```{r match_regression}
+
+matches_reg = lm(kg_per_H ~ croptype + CDFA + ACRES + STORIE_, data = matches)
+summary(matches_reg)
+```
+
+
+

@@ -1,0 +1,121 @@
+---
+title: "Kern County Parcel Shapefile -- CDFA table join on APN Field"
+output:
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**The purpose of this Rmarkdown document is to join CDFA tabular data to the Kern County Parcel shapefile. Two previous Rmarkdown documents prepared APNs for the join**
+
+**Notes:** 
+
+* This Rmarkdown document uses a function in the "2_KernCountyParcel_CDFA_join.R" file to join CDFA and Kern County Parcel data on their respective APN columns. See notes in that R script for more details about that function
+
+**Output:**
+
+* Shapefile of with CDFA data joined to Kern County Parcel shapefile attribute table by APN
+
+---
+
+#### 1. Load packages, function, and data
+```{r load_packages}
+library(tidyverse) # For general data wrangling and operations on dataframes
+library(rgdal) # GDAL for R. 
+library(sf) # For simple features operations in R. Allows the attribute table of a shapefile to be converted to a dataframe structure while maintaining the geometry for easy data view and operations. 
+
+# Bring in function stored in the '3_KernCountyParcel_CDFA_join.R' script. If editing that 
+# function, check the box that says 'source on save' to upload that latest version of the 
+# function in this Rmarkdown document
+source("../R/2_KernCountyParcel_CDFA_join.R")
+
+# Read in Kern County Parcel data and transform Kern County Parcel data into the correct CRS for project. CA Teale Albers 2011
+KernCoParcels <- readOGR("../R_input/spatial/Kern_ALL_shp/Kern_Parcels_2017_Final.shp") %>% 
+  spTransform(., CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs "))
+
+setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown")
+```
+
+#### 2. Apply function that joins CDFA data to Kern County Parcel data on the APN field specified years: 2013 - 2017. 
+```{r apply_function}
+
+# Specify years for function to be applied to
+yrs = 2013:2017
+
+# For more notes about this function see the .R file
+
+for(i in yrs){
+  
+  KernCoParcel_CDFA_join(year = i, # Year index
+                         kern_parcel_shp = KernCoParcels) # Shapefile to be used
+
+  }
+
+```
+
+# Dealing with Grimmway/Crystal Organics
+
+## 1) Read in Kern County Parcels that matched to CDFA records based on the APN
+```{r cdfa_apn_match}
+
+### Kern County Parcels that matched with CDFA APNs
+cdfa_APN_parcels_2017 = readOGR("../R_output/spatial/CDFA_parcels/2017/CDFA_Parcels2017.shp") %>% 
+  st_as_sf()
+
+## 357 organic parcels match to CDFA APNs
+
+```
+
+## 2) Locate parcels in CDFA data that match to Kern County Parcels on TRS codes
+```{r trs_matches}
+
+# Bring in Kern Sections
+kern_sections = readOGR("../R_input/spatial/Kern_PLSsections/Kern_15r.shp")%>% 
+  spTransform(., CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs ")) %>% 
+  st_as_sf()
+
+kern_sections_slct = kern_sections %>% 
+  dplyr::select(AREA,MTRS)
+
+# Create TRS column by trimming "m' off the beginning of the MTRS column values
+kern_sections_slct$TRS <- str_sub(kern_sections_slct$MTRS,2,9)
+
+# Read in CDFA data with the TRS codes pulled from the APN column
+cdfa_df = read_csv("../R_input/CSV/CDFA/excel_edited/Kern_CDFA_TRS_2017.csv") 
+
+# Create a TRS column
+cdfa_df$TRS = paste0(cdfa_df$T,cdfa_df$R,cdfa_df$S)
+
+# Get rid of rows without a TRS code
+cdfa_TRS_df = cdfa_df %>% 
+  filter(!is.na(S)) %>% 
+  select(`Organic ID`,Company,TRS)
+# 318 Rows after filtering out NAs
+
+cdfa_trs_duplicates = data.frame(trs = as.factor(cdfa_TRS_df$TRS)) %>% 
+  group_by(trs) %>% 
+  summarise(count = n())
+# There are 106 unique TRS codes
+
+# Merge CDFA to PLSS sections on the TRS columns created above
+cdfa_sections = merge(kern_sections_slct,cdfa_TRS_df,by = "TRS")
+
+# The above operation produces 302 sections, but there are only 106 unique TRS codes. This must mean some duplicates are produced here. We only need to maintain the company name here, to check when we join this to kern ag data.
+
+cdfa_sections_unique = distinct(cdfa_sections,.keep_all = T) %>% 
+  as(.,"Spatial")
+# This produces 91 distinct sections. Check visually
+plot(cdfa_sections_unique$geometry)
+
+# Now I need to merge intersect this with Kern Ag Data and filter that for any parcel that has organic in the name, then merge that with the cdfa_APN data
+
+writeOGR(cdfa_sections_unique,
+         dsn = "../R_output/spatial/CDFA_PLSSsections/",
+         layer = "cdfa_sections",
+         driver = "ESRI Shapefile",
+         overwrite_layer = T)
+
+```
+

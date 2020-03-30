@@ -1,0 +1,84 @@
+---
+title: "c_AllOrgs_Pest_Join"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(rgdal)
+library(sf)
+
+all_orgs = readOGR("../R_output/spatial/KernAgOrgs_CDFAOrgs_join/2017/union.shp")
+all_orgs_sf = st_as_sf(all_orgs) %>% 
+  filter(organic == "3") %>% 
+  dplyr::select(-ACRES_1,-SHAPE_A,-DT_ACT,-PERMIT_2,-SITEID_2,-COMM_2,-DT_INACT)
+
+colnames(all_orgs_sf)[3] = "permitsite"
+
+pest = read_csv("../R_input/CSV/PesticideUse/KernOrgCollapse1317.csv")
+pest = pest %>% 
+  dplyr::filter(year == "2017")
+```
+
+
+```{r}
+all_orgs_pest <- inner_join(all_orgs_sf, pest_data_2017)
+
+n_org_b4_join = sum(all_orgs_sf$organic, na.rm = T)/3 # 1284
+n_org_after_join = sum(all_orgs_pest$organic, na.rm = T)/3 # 626
+```
+
+
+```{r}
+
+all_orgs_2 = all_orgs_pest %>% 
+  separate(col = "COMM_1", 
+       into = c("COMM_x","COMM_y"), 
+       sep = "-",
+       remove = FALSE)
+    
+all_orgs_2$COMM_1=as.character(all_orgs_2$COMM_1)
+all_orgs_2$COMM_x=as.character(all_orgs_2$COMM_x)
+all_orgs_2$COMM_y=as.character(all_orgs_2$COMM_y)
+
+all_orgs_2$COMM_new <- ifelse(all_orgs_2$COMM_y == "ORGANIC"|is.na(all_orgs_2$COMM_y), 
+                           all_orgs_2$COMM_x, 
+                           all_orgs_2$COMM)
+
+all_orgs_2 = all_orgs_2 %>% 
+  dplyr::select(-COMM_x,-COMM_y)
+
+```
+
+```{r}
+ALL_ORGS_SUMMARY = all_orgs_2 %>% 
+     as.data.frame() %>% 
+     dplyr::select(-geometry) %>% 
+     summarise(total_fields = n(),
+               total_hectares = round(sum(AREA_HE),1),
+               average_field_size = round(mean(AREA_HE),1),
+               average_SoilQ = mean(STORIE_, na.rm = T),
+               total_pest_app = sum(KgPestPrd),
+               kg_per_hectare = sum(KgPestPrd)/sum(acrestreated*0.0405))
+```
+
+```{r}
+ALL_ORGS_CropSummary = all_orgs_2 %>%  # Call dataframe that corresponds to the correct buffer width and year
+     as.data.frame() %>% # Remove the spatial characteristic of the dataframe
+     dplyr::select(-geometry) %>% # Remove the geometry column
+     #filter(organic == "1") %>% # Filter for CDFA Organic fields
+     group_by(COMM_new) %>% # Group by the commodity
+     summarise(total_fields = n(), # Count total number of fields for each commodity
+               total_hectares = round(sum(AREA_HE),1), # Count hectares for each commodity
+               average_field_size = round(mean(AREA_HE),1), # Find average field size for each commodity
+               average_SoilQ = mean(STORIE_, na.rm = T), # Find average soil quality for each commodity
+               total_pest_app = sum(KgPestPrd), # Total pesticide applied for this crop
+               kg_per_hectare = sum(KgPestPrd)/sum(acrestreated*0.0405)) %>% # Pesticide per hectare
+     arrange(-total_fields) %>% # Arrange dataframe with total field column in descending order
+     head(5) # Select the five crops with the most fields
+```
+

@@ -1,0 +1,177 @@
+---
+title: "Organic vs. conventional crop field summary statistics"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**The purpose of this Rmarkdown file is to do a prelimnary comparison of fields in Kern County that grow organic versus conventional crops, as determined by CDFA APN records -- to see complete methodology see Rmarkdown files 1-5. The comparison is done at the crop level so that fields with organically grown carrots are compared to fields with conventionally grown carrots, etc.**
+
+The summary statistic categories include:      
+* Number of fields associated with crop type crop~i~     
+* Total hectares associated with crop~i~     
+* Average crop ~i~ field size     
+* Average soil quality of fields with crop~i~ 
+
+***
+
+Notes:
+
+- This document uses input data that has organic fields identified ONLY by the CDFA APN, unlike '8b_ByCrop_SummaryStats.Rmd' which includes organic fields indentified from the Kern Agriculture shapefile ("ORGANIC' in the comm field of the attribute table) 
+
+#### 1. Load packages and prevent scientific notation in output data.frames and CSVs
+```{r packages_and_settings, message=FALSE, warning=FALSE}
+library(rgdal)
+library(sf)
+library(tidyverse)
+
+options(scipen = 9999) # Prevent Scientific Notation
+```
+
+#### 2. Read in data
+```{r}
+
+years = 2017 # 2013:2017
+#### This forloop reads in KernAg_CDFA_join shapefile, the shapefile that joined Kern Ag with CDFA parcels, for specific years and buffer widths ####
+for(i in years){
+    
+    tmp = readOGR(paste0("../R_output/spatial/KernAg_CDFA_pest/",i,"/FINAL","/KernAg_CDFA_Pest_FINAL.shp")) %>% # Read in
+      st_as_sf() # Convert to spatial dataframe
+    
+    # Create output name based on year and buffer width
+    assign(paste0("data_",i),tmp)
+   
+}
+
+```
+
+#### 3. Determine which organic crops have at least 5 fields
+```{r}
+topCrops_df = data_2017 %>% 
+  as.data.frame() %>% 
+  dplyr::select(-geometry) %>% 
+  group_by(comm_dt) %>% 
+  summarise(total_orgFields = sum(organic)) %>% 
+  arrange(-total_orgFields) %>% 
+  filter(total_orgFields >= 15)
+
+comparable_crops = topCrops_df$comm_dt
+```
+
+#### 4. Evaluate fields with organically grown crops, as determined by CDFA APN records *and* Kern Ag attribute table 'COMM' column. See Rmarkdown files 1-5 for detailed methods.
+```{r organic_crops}
+
+years = 2017 # Set years to evaluate
+buf_width = c(50) # Set buffer widths to evaluate
+
+data_2017$acres = as.numeric(data_2017$acres)
+
+for(i in years){
+   for(j in buf_width){
+    
+     tmp = eval(as.name(paste0("data_",i))) %>%  # Call dataframe that corresponds to the correct buffer width and year
+       as.data.frame() %>% # Remove the spatial characteristic of the dataframe
+       dplyr::select(-geometry) %>% # Remove the geometry column
+       filter(organic == "1" & comm_dt %in% comparable_crops) %>% # Filter for CDFA Organic fields
+       group_by(comm_dt) %>% # Group by the commodity
+       summarise(total_fields = n(), # Count total number of fields for each commodity
+                 total_hectares = round(sum(acres*0.405/N_crps_),1), # Count hectares for each commodity
+                 average_field_size = round(mean(acres*0.405/N_crps_),1), # Find average field size for each commodity
+                 average_SoilQ = mean(storie, na.rm = T), # Find average soil quality for each commodity
+                 total_pest_app = sum(KgPstAI), # Total pesticide applied for this crop
+                 kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_)) %>% # Pesticide per hectare
+       arrange(comm_dt) # Arrange dataframe with total field column in descending order
+
+     
+     assign(paste0("ORG_",i,"_B",j,"_SumStats"),tmp)
+     remove(tmp)
+   }
+}
+
+# crops_B50 = ORG_2017_B50_SumStats$COMM_new # Create character vector of the 5 organic crops with the most fields, to be used for data filtering in the following two code chunks
+
+```
+
+#### 5. Evaluate fields with conventionally grown crops
+```{r conventional_crops}
+
+buf_width = 50
+
+for(i in years){
+   for(j in buf_width){
+    
+     tmp = eval(as.name(paste0("data_",i))) %>% 
+       as.data.frame() %>% 
+       dplyr::select(-geometry) %>% 
+       filter(organic == "0" & comm_dt %in% comparable_crops) %>% # Filter for nonCDFA (conventional) fields and the five most common oganic crops 
+       group_by(comm_dt) %>% 
+       summarise(total_fields = n(),
+                 total_hectares = round(sum(acres*0.405/N_crps_),1),
+                 average_field_size = round(mean(acres*0.405/N_crps_),1),
+                 average_SoilQ = mean(storie, na.rm = T),
+                 total_pest_app = sum(KgPstAI),
+                 kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_)) %>% 
+       arrange(comm_dt) # Arrange order of the 'crops' character vector
+     
+     assign(paste0("CONV_",i,"_B",j,"_SumStats"),tmp)
+     
+   }
+}
+
+```
+
+#### 6. Evaluate all agriculture fields in Kern County
+```{r all_crops}
+
+buf_width = 50
+
+for(i in years){
+   for(j in buf_width){
+    
+     tmp = eval(as.name(paste0("data_",i))) %>% 
+       as.data.frame() %>% 
+       dplyr::select(-geometry) %>% 
+       filter(comm_dt %in% comparable_crops) %>% # Filter for the five most common oganic crops 
+       group_by(comm_dt) %>% 
+       summarise(total_fields = n(),
+                 total_hectares = round(sum(acres*0.405/N_crps_),1),
+                 average_field_size = round(mean(acres*0.405/N_crps_),1),
+                 average_SoilQ = mean(storie, na.rm = T),
+                 total_pest_app = sum(KgPstAI),
+                 kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_)) %>% 
+       arrange(comm_dt) # Arrange order of the 'crops' character vector
+     
+     assign(paste0("ALL_",i,"_B",j,"_SumStats"),tmp)
+     
+   }
+}
+
+```
+
+#### 7. Combine data into a table and export
+```{r combine_data}
+
+combined = cbind(ALL_2017_B50_SumStats,CONV_2017_B50_SumStats,ORG_2017_B50_SumStats) # Combined three outputs
+
+# Rename columns
+colnames(combined) =c("crop","total_fields","total_hectares","avg_field_H","avg_soilQ","total_pest_use","pest_kgperH",   
+                      "crop2","total_C_fields","total_C_hectares","avg_C_field_ar","avg_C_soilQ","total_C_pest_use","pest_C_kgperH",
+                      "crop3","total_O_fields","total_0_hectares","avg_O_field_ar","avg_O_soilQ","total_O_pest_use","pest_O_kgperH")
+
+combined = dplyr::select(combined,c(-crop2,-crop3)) # Remove redundant crop columns
+combined = combined[,c(1,2,8,14,3,9,15,4,10,16,5,11,17,6,12,18,7,13,19)] # Reorder columns to have summary statistics grouped
+combined = combined %>% 
+  arrange(-total_O_fields)
+
+combined[,11:19] = round(combined[,11:19],2)
+combined$OgC = combined$pest_O_kgperH > combined$pest_C_kgperH
+
+# Write output CSV with all 19 crops included
+write_csv(combined,"../R_output/CSV/SummaryStatistics/By_Crop_SummaryStatistics_CDFAonly.CSV") 
+
+```
+

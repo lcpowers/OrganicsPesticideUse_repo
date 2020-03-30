@@ -1,0 +1,196 @@
+---
+title: "Kern County Agriculture -- CDFA parcel spatial join"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**The purpose of this Rmarkdown file is to join CDFA parcels (CDFA data matched to Kern County parcels on APN) to Kern County Agriculture parcels.**
+
+**Notes:**
+
+* CDFA parcels were determined by formatting APNs reported to the CDFA by growers, then matching the formatted APNs to Kern County Assessor Parcel spatial data on the APN field. 
+* Kern County Agriculture parcels are available on the Kern County Website. 
+* Polygons in the Kern County Agriculture shapefile and Kern County Parcel shapefile have different dimensions, with Kern Agriculture fields being generally smaller and containing more detailed agriculture information. This spatial join determines and extracts overlapping parcels and maintains the Kern County Agriculture shapefile's polygon dimensions, which gives us more detailed and accurate information about crop fields in Kern County.  
+* This Rmarkdown document uses a function in the "4_KernAg_CDFA_Join.R" file. Function variables include:
+       * Year (year)
+       * Buffer width (buf_width)
+       * Two true/false argument for function output
+
+
+**Output:**
+
+* The function output can be:
+       * A joined shapefile that includes all AG parcels and the Kern Ag/CDFA attribute table
+       (write_all_shp = TRUE)
+       * A joined shapefile that is filtered to only include ag parcels that joined to a CDFA parcel
+       (write_cdfa_shp = TRUE)
+       
+---
+
+
+#### 1. Load packages, set working diretory, and source KernAg_CDFA_join.R file with contains a function that does a spatial join between the two data.sets
+```{r packages_and_function}
+library(tidyverse) # General data organization
+library(rgdal) # Gdal for R
+library(rgeos) # need this for gBuffer
+library(sf) # Specific operations on different versions of shapefiles in R
+library(raster)
+
+setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown")
+
+# Access function in .R document used to join Kern Agriculture and CDFA parcel shapefiles. 
+# See the .R file for more information about the function
+source("../R/4_KernAg_CDFA_Join.R")
+```
+
+#### 2. Implement the function for the years of interest and desired buffer width. See notes in the following code chunk for more information about buffer widths and how 50m was determined
+```{r implement_function, message=FALSE, warning=FALSE}
+# Years of interest
+years = 2017
+
+# Buffer widths: In the function these are negative and reduce the CDFA field size. 
+# A larger buffer results in a more conservative spatial join between the CDFA parcels and 
+# Kern County Agriculture Parcels. The fields in each shapefile have different dimensions, and 
+# with no buffer applied CDFA fields match to Kern Ag parcels that hardly touch, increasing the 
+# risk of false matches. 
+
+# With a 100-meter buffer, the Kern Ag fields that CDFA parcels join to are almost entirely 
+# within the CDFA parcels which results in a loss of reasonable matches.
+
+# A 50-meter buffer provides conservative but seemingly accurate matches. 
+# Matches were checked by comparing the company and permittee columns in the attribute 
+# table of the resulting joined shapefile.
+
+buf_width = c(50)
+
+for(i in years){
+  
+  for(j in buf_width){
+  
+    # Create output directory for the output CSV file that lists the CDFA data 
+    # with commodities from Kern Ag data attached
+    dir.create(paste0("../R_output/CSV/CDFA/Commodities/",i),
+               recursive = TRUE)
+    
+    # Create output directory for the CDFA_KernAg_join shapefile that is filtered 
+    # to contain only fields that matched to CDFA parcels
+    dir.create(paste0("../R_output/spatial/CDFA_commodities/",i,"/buffer",j),
+               recursive = TRUE)
+    
+    # Create the output directory for the full CDFA_KernAg_join shapefile, no filters applied. 
+    dir.create(paste0("../R_output/spatial/KernAg_CDFA_join/",i,"/buffer",j),
+               recursive = TRUE)
+    
+    # Apply the function that is in the KernAg_CDFA_Join.R script
+  kernAg_CDFA_joinFun(i, buf_width = j, write_all_shp = T, write_cdfa_shp = T)
+ 
+     }
+  }
+
+```
+
+
+## Read in data produced above, Kern Ag data, and CDFA TRS Section data
+```{r}
+
+# Read in data produced above. This is the cdfa data joined to kern county parcels on APN, then spatially joined to kern ag data in the above function
+kernAg_cdfaAPN <- readOGR("../R_output/spatial/KernAg_CDFA_join/2017/buffer50/All_KernAg_CDFA_join2017_B50.shp") %>% 
+  st_as_sf()
+
+# This is the raw kern Ag data
+kernAg <- readOGR("../R_input/spatial/kern_AG_withStorInd/2017/KernAg_with_StorInd_2017.shp") %>% 
+  st_as_sf()
+
+# Get rid of unnecessary Kern ag columns
+kernAg_select = kernAg %>% 
+  dplyr::select(PERMIT,SITEID,S_STATUS,COMM,PMT_SITE,PERMITTEE,ACRES,soil)
+
+# These are the sections that joined to CDFA data on TRS codes. Two producers used TRS codes instead of APNs, which is where TRS was pulled from 
+cdfa_sections <- readOGR("../R_output/spatial/CDFA_PLSSsections/cdfa_sections.shp") %>% 
+  st_as_sf()
+
+# Get rid of unnecessary columns
+cdfa_sections_select = cdfa_sections %>% 
+  dplyr::select(TRS,Organic_ID,Company) %>% 
+  mutate(TRS_match = 1)
+
+
+kernAg_sections_join <- st_join(kernAg_select,cdfa_sections_select,largest=T)
+# With cdfa_sections in the x argument, this produces 91 observations
+# WIth kernAg_select in the x argument this produces 11729 observations
+
+# Check how many trs matches stayed in this data set
+sum(kernAg_sections_join$TRS_match,na.rm = T)
+#1358...this is too many. See what happens after filter for Crystal Organic...
+
+kernAg_CDFA_TRS = st_as_sf(kernAg_sections_join) %>% 
+  filter(str_detect(PERMITTEE,"CRYSTAL ORGANIC")) %>% 
+  distinct(.,.keep_all = T)
+## This get it to 303
+
+## Joining the above parcels to the CDFA KernAG APN match data
+# Method 1
+CDFA_APNandTRS_AgJoin <- bind(as(kernAg_cdfaAPN,"Spatial"),as(kernAg_CDFA_TRS,"Spatial")) %>%
+  st_as_sf()
+
+# Method 2
+CDFA_APNandTRS_stJoin <- st_join(kernAg_cdfaAPN,kernAg_CDFA_TRS,largest=T)
+
+# Checking this:
+CDFA_APNandTRS_stJoin_check <- CDFA_APNandTRS_stJoin %>% 
+  filter(PERMITTEE.x == "CRYSTAL ORGANIC FARMS, LLC" & Company!="Grimmway Enterprises Inc.")
+# Zero
+
+CDFA_APNandTRS_stJoin_check <- CDFA_APNandTRS_stJoin %>% 
+  filter(PERMITTEE.x == "CRYSTAL ORGANIC FARMS, LLC")
+# 759
+
+kernAg_crystal = kernAg %>% 
+  filter(PERMITTEE == "CRYSTAL ORGANIC FARMS, LLC")
+# 759
+
+# CDFA_APNandTRS_AgJoin <- bind(kernAg_cdfaAPN,kernAg_CDFA_TRS) %>% 
+#   st_as_sf()
+
+CDFA_APNandTRS_stJoin_sf = st_as_sf(CDFA_APNandTRS_stJoin)
+## 11729
+
+mismatches = which(!(CDFA_APNandTRS_stJoin_sf$PERMITTEE.x == CDFA_APNandTRS_stJoin_sf$PERMITTEE.y))
+
+CDFA_APNandTRS_stJoin_sf = CDFA_APNandTRS_stJoin_sf[-as.numeric(mismatches),]
+## 11711
+
+CDFA_APNandTRS_stJoin_sf = CDFA_APNandTRS_stJoin_sf[,c(1:12,24)]
+
+CDFA_APNandTRS_stJoin_sf$organic <- ifelse(CDFA_APNandTRS_stJoin_sf$CDFA == 1,1,CDFA_APNandTRS_stJoin_sf$TRS_match)
+CDFA_APNandTRS_stJoin_sf$organic <- ifelse(is.na(CDFA_APNandTRS_stJoin_sf$organic),0,1)
+
+colnames(CDFA_APNandTRS_stJoin_sf) = c("permit",
+                                "siteid",
+                                "permitsite",
+                                "s_status",
+                                "permittee",
+                                "company",
+                                "comm",
+                                "cdfa_apn",
+                                "acres",
+                                "storie",
+                                "comm_group",
+                                "comm_edit",
+                                "cdfa_trs",
+                                "geometry","organic")
+
+writeOGR(obj = as(CDFA_APNandTRS_stJoin_sf,"Spatial"),
+         dsn = "../R_output/spatial/KernAg_CDFA_join/2017/buffer50/",
+         layer = "TRSandAPN",
+         driver = "ESRI Shapefile",
+         overwrite_layer = T)
+
+
+```
+

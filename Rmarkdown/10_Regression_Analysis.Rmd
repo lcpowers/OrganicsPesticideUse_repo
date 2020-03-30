@@ -1,0 +1,191 @@
+---
+title: "10_Regression_analysis"
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### 1. Load packages, set working directory, and prevent scientific notation
+```{r get_packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(rgdal)
+library(sf)
+library(MatchIt) ## Package with Propensity Score Matching
+library(optmatch)
+options(scipen = 9999) ## Avoid scientific notation
+setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown") # Set working directory to make relative filepath names work
+
+```
+
+Simple linear regression equation
+
+$Annual~kg/H = croptype + CDFA~organic + field~size + soil~quality$
+
+#### 2. Prepare regression dataframe
+
+# Get data and make a dataframe to be used in regression analysis. 
+This is not important, it just gets rid of '-ORGANIC' from the commodity column and groups lettuce together, rather than having 'LETTUCE LEAF' and 'LETTUCE' as separate crop types. 
+```{r get_data, echo=TRUE, message=FALSE, warning=FALSE}
+
+data = readOGR("../R_output/spatial/KernAg_CDFA_pest/2017/FINAL/KernAg_CDFA_Pest_FINAL.shp") %>% 
+  st_as_sf()
+
+matching = data %>% 
+     as.data.frame() %>% 
+     dplyr::select(-geometry) %>% 
+     group_by(COMM_nw) %>% 
+     summarise(total_fields = n(),
+               cdfa_fields = sum(CDFA)) %>% 
+  filter(cdfa_fields > 4) %>% 
+  arrange(-cdfa_fields)
+
+crops_filter = as.factor(as.character(matching$COMM_nw))
+org_groups = as.factor(as.character(data$COMM_GR[data$CDFA==1]))
+
+reg_df = data %>% 
+  as.data.frame() %>% 
+  filter(STORIE>0&COMM_GR%in%org_groups) %>% 
+  select("group" = COMM_GR,
+         "croptype"=COMM_nw,
+         CDFA,
+         "soil"=STORIE,
+         KgPstAI,
+         "fieldsize"=HE)
+
+reg_df$croptype = as.factor(as.character(reg_df$croptype))
+reg_df$CDFA = as.factor(reg_df$CDFA)
+reg_df$KgAIpHe = reg_df$KgPstAI/reg_df$fieldsize
+
+```
+
+# Simple Linear Regression -- Just seeing how R is recognizing/processing covariates
+```{r SLR}
+simple_reg = lm(KgAIpHe~group+CDFA+soil+fieldsize, data = reg_df) # Mainly to see how data is being read in regression
+summary(simple_reg) # Look at regression results
+
+field_soil_lm = lm(fieldsize~soil, data=reg_df)
+summary(field_soil_lm)
+
+```
+
+
+# Propensity score estimation for dataset with Crop reference variable
+```{r estimate_scores}
+
+propensity_logit = glm(CDFA ~ group + soil + fieldsize, 
+                       family = binomial, 
+                       data = reg_df)
+
+summary(propensity_logit)
+
+# Predict propensity scores and place in a new column
+pscore_df = data.frame(pr_score = predict(propensity_logit,type = "response"),
+                    CDFA = reg_df$CDFA)
+
+```
+
+
+```{r}
+ggplot(pscore_df,aes(x = pr_score))+
+  geom_histogram(color="white")+
+  facet_wrap(~CDFA,scales="free")+
+  theme_bw()
+```
+
+```{r}
+
+duplicates_df <- reg_df %>% 
+  filter(CDFA == 1) %>% 
+  rbind(.,reg_df)
+
+
+```
+
+
+# Propensity score matching
+```{r find_matches}
+# The following paragraph is the MatchIt package author's explanation of the matchit() function that I use below
+
+# matchit is the main command of the package MatchIt, which enables parametric models for causal inference to work better by selecting well-matched subsets of the original treated and control groups. MatchIt implements the suggestions of Ho, Imai, King, and Stuart (2004) for improving parametric statistical models by preprocessing data with nonparametric matching methods. MatchIt implements a wide range of sophisticated matching methods, making it possible to greatly reduce the dependence of causal inferences on hard-to-justify, but commonly made, statistical modeling assumptions. The software also easily fits into existing research practices since, after preprocessing with MatchIt, researchers can use whatever parametric model they would have used without MatchIt, but produce inferences with substantially more robustness and less sensitivity to modeling assumptions. 
+
+match = matchit(CDFA ~ group + soil + fieldsize, 
+                method = "nearest", 
+                data = reg_df)
+
+summary(match)
+# plot(match)
+
+# match.data outputs matched data sets from matchit()
+matches <- match.data(match)
+dim(matches)
+
+```
+
+
+Look at difference in means between matches to see if they're closer than in the original data set. Differences should not be significant AKA fail to reject the null
+```{r check_matches}
+cov <- c('fieldsize', 'soil') # Covariates to check matches with
+
+matches %>%
+  group_by(CDFA) %>% # Seperate the two CDFA groups (1 = ORGANIC, 0 = CONVENTIONAL)
+  dplyr::select(one_of(cov)) %>%
+  summarise_all(funs(mean))  # Find the means of each covariate group within the org or conv groups
+
+t.test(matches$soil~matches$CDFA)
+t.test(matches$fieldsize~matches$CDFA)
+
+# Checking another way
+ggplot(matches,aes(x = distance,y = soil,color=CDFA))+
+  geom_point()+
+  geom_smooth(method = "loess")+
+  theme_bw()
+
+ggplot(matches,aes(x = distance,y = fieldsize,color=CDFA))+
+  geom_point()+
+  geom_smooth(method = "loess")+
+  theme_bw()
+
+ggplot(matches,aes(x = distance,y = group,color=CDFA))+
+  geom_point()+
+  theme_bw()
+```
+
+
+# THE TWO PROPENSITY SCORE REGRESSION EQUATIONS
+************
+## Regression with **propensity scores as covariate**
+```{r reg_with_pscores}
+
+reg_df$pscores = predict.glm(propensity_logit,type="response")
+
+pscore_reg = lm(KgAIpHe ~ group + CDFA + fieldsize + soil + pscores, data = reg_df)
+summary(pscore_reg)
+
+# plot(pscore_reg)
+```
+
+
+************
+## Regression on **matches data.frame**, *propensity score not used as covariate*
+```{r match_regression}
+
+matches_reg = lm(KgAIpHe ~ group + CDFA + fieldsize + soil, data = matches)
+summary(matches_reg)
+
+plot(matches_reg)
+
+```
+
+
+** Producers that have both organic and conventional
+- Isolate to farmers who grow both and compare pesticide use 
+- How to do the stats on this
+
+
+
+

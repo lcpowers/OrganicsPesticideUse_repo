@@ -1,0 +1,222 @@
+---
+title: "8 Join PesticideUseData to KernAg-CDFA shapefile"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**The purpose of this Rmarkdown file is to join pesticide use data to the Kern County Agriculture-CDFA shapeile created in the previous Rmarkdown document, to then compare pesticide use  and other environmental characteristics across conventional and organic fields.**  
+
+
+**Notes:**
+
+- In code chunk 5, this document also determines the number of crops being grown on each field. This helps us prevent bias that may arise from pesticide use data associated with fields that have multiple crops [S_STATUS == "M"].
+
+**Output:**
+- Shapefile that includes information from Kern Ag, CDFA, Storie Index (soil), and Pesticide use data in the attribute table
+      * "../R_output/spatial/KernAg_CDFA_pest/",i,"/B50"
+       where 'i' is the year being evaluated
+
+---
+
+
+#### 1. Get Packages and Data
+```{r get_packages_and_data}
+
+library(tidyverse)
+library(rgdal)
+library(stringi)
+library(sf)
+setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown")
+
+# Avoid scientific notation in dataframes
+options(scipen = 9999) 
+
+# Read in Pesticide Data 
+pest_data_raw <- read_csv("../R_input/CSV/PesticideUse/KernOrgCollapse1317.csv")
+
+# Specify years of interest
+years = 2017
+
+# Specify buffer width being analyzed -- Buffer widths were originally implemented in the Kern Agriculture CDFA Parcel spatial join. 
+buf_width = c(50)
+```
+
+#### 2. Create pesticide use dataframes for each year
+```{r pest_dataframes, message=FALSE}
+
+#### For loop to create dataframes of pesticide use for each year from 2013:2017
+for(i in years){ 
+  
+  # Filter pesticide data year i
+  tmp <- filter(pest_data_raw,year==i)
+  
+  # Give it a name for that specific year
+  assign(paste0("pest_data_",i),tmp)
+  }
+
+```
+
+#### 3. Read in KernAg_CDFA shapefiles for each year and give unique name
+```{r get_kernAg}
+
+# Read in KernAg_CDFA (joined) shapefile with appropriate buffer and convert to spatial dataframe
+for(i in years){ # For each year...
+  for(j in buf_width){ # And each buffer width...
+  
+  # Read in the joined KernAg_CDFA data...
+  tmp <- readOGR(paste0("../R_output/spatial/KernAg_CDFA_join/",i,"/buffer",j,"/TRSandAPN.shp")) %>% 
+  st_as_sf()
+
+  # Assign a name
+  assign(paste0("kern_ag_",i,"_B",j),tmp)
+  
+  remove(tmp)
+    }
+}
+
+colnames(kern_ag_2017_B50)
+```
+
+#### 4. Join pesticide data to Kern Agriculture/CDFA data by the 'permitsite' column. The 'permitsite' column is the unique identifier for each field, and is a concatenated version of the permit number and site ID. 
+```{r join_KernAgCDFAData_to_pestData}
+
+for(i in years){
+  
+  # Find the data.frame that was previously read in that corresponds 
+  # to year.i and buffer_width.j
+  tmp_ag = eval(as.name(paste0("kern_ag_",i,"_B",j)))
+  
+  # Rename the "PMT_SITE" column to "permitsite"
+  colnames(tmp_ag)[3] = "permitsite"
+  
+  # Find the pesticide use data.frame that corresponds to pest_data_year.i
+  tmp_pst = eval(as.name(paste0("pest_data_",i)))
+  
+  # Join the pesticide use data.frame to the 
+  # Agriculture shapefile on 'permitsite' and keep only the rows that had mathches
+  join_pst = inner_join(tmp_ag,tmp_pst)
+  
+  # Assign a unique name based on the year
+  assign(paste0("kernAg_CDFA_pest_",i), join_pst)
+  
+  # Remove the temporary data.frame to avoid errors
+  remove(tmp_pst, tmp_ag)
+  
+}
+```
+
+#### 5. Determine the number of crops being grown on multi-crop fields (S_STATUS == "M") and add information to the KernAg_CDFA_pesticideUse dataframe shapefile.
+```{r deal_with_Mfields}
+
+# Turn the 2017 kernAg_CDFA_pest shapefile into a simple features (spatial) data.frame
+multicrop_df = st_as_sf(kernAg_CDFA_pest_2017) %>% 
+  # Turn into basic data.frame to remove spatial references
+  as.data.frame() %>% 
+  # Select columns relevant to dealing with M fields
+  dplyr::select(permitsite,s_status)
+
+# Convert 'permitsite' column to character
+multicrop_df$permitsite = as.character(multicrop_df$permitsite) 
+
+# Create a new column of permitsites with the last character trimmed from each 
+# 'permitsite' string that correspond to a field with an "M" in the "S_STATUS" column.
+
+# For rows with "M" in column "S_STATUS"
+multicrop_df$permitsite_trim1 = ifelse(multicrop_df$s_status == "M", 
+        
+   # Trim the last character off the 'permitsite' string
+   strtrim(multicrop_df$permitsite,width=nchar(multicrop_df$permitsite)-1),
+
+   # Leave other rows alone
+   multicrop_df$permitsite)
+
+# Create another new column from the original "permitsite" field with only the last character 
+# from the string. This is used to double check the seperation of characters in the step above. If concatenated,
+# '_trim1' + '_trim2' should be identical to the original 'permitsite' string.  
+
+# If the value in 'S_STATUS' == M
+multicrop_df$permitsite_trim2 = ifelse(multicrop_df$s_status == "M",
+                             
+   # Grab the last character in the 'permitsite' string
+substr(x = multicrop_df$permitsite,
+start = nchar(multicrop_df$permitsite),
+stop = nchar(multicrop_df$permitsite)), 
+
+# Otherwise make equal to NA
+ NA)
+
+# Create a new dataframe that has each unique 'permitsite' string in the first column
+# and the number of times it is repeated in the second column. Multi-crop fields (S_STATUS == M) 
+# are consistently distinguised from one another by a unique character at the end (right side) 
+# of an otherwise identical 'permitsite' string. With the last character trimmed off of those strings, 
+# we can determine the number of crops in the multi-crop fields based on the number of duplicate
+# permitsites in the 'permitsite_trim1' column.
+prmtst_dups = as.data.frame(table(multicrop_df$permitsite_trim1))
+
+# Rename columns from generic names given by table() function
+colnames(prmtst_dups) = c('permitsite','n')
+
+# Change 'permitsite' column from factor to character
+prmtst_dups$permitsite = as.character(prmtst_dups$permitsite)
+
+# Merge multicrop_df data.frame (with permitsite_trim columns) and prmtst_dups data.frame. This merge 
+# allows us to see how many crops are associated with each permitsite i.e. how many 
+# crops are in each individual field. 
+multicrop_df_final = merge(multicrop_df, 
+                           prmtst_dups, 
+                           by.x="permitsite_trim1", 
+                           by.y="permitsite", 
+                           type = "right") %>% 
+  dplyr::select(permitsite,n)
+
+# Rename columns for merge and later use
+colnames(multicrop_df_final) = c("permitsite","N_crops_prmtst")
+
+# Merge the final multicrop_df dataframe into the kernAg_CDFA_pest_2017 simple features data.frame
+kernAg_CDFA_pest_2017 = merge(kernAg_CDFA_pest_2017, multicrop_df_final, by = 'permitsite')
+kernAg_CDFA_pest_2017$acres = as.numeric(as.character(kernAg_CDFA_pest_2017$acres))
+kernAg_CDFA_pest_2017$HE = kernAg_CDFA_pest_2017$acres*0.405/kernAg_CDFA_pest_2017$N_crops_prmtst
+```
+
+
+#### 7. Write output shapefiles -- Kern Agriculture data with pesticide use data
+```{r write_output_files}
+# Set years to be evaluated
+years = 2017
+
+# Initiate for_loop
+for(i in years){
+  
+  # Grab the data.frame with the KernAg_CDFA_pesticide data output from codechunk 5
+  tmp_pst = eval(as.name(paste0("kernAg_CDFA_pest_",i)))
+  
+  # Turn it back into a shapefile
+  tmp_shp = as(tmp_pst,"Spatial")
+  
+  # Create an output directory 
+  dir.create(paste0("../R_output/spatial/KernAg_CDFA_pest/",i,"/B50"),
+               recursive = TRUE)
+  
+  # Write the shapefile in to the output directory
+  writeOGR(tmp_shp,
+           "../R_output/spatial/KernAg_CDFA_pest/2017/B50/",
+           paste0("KernAg_CDFAapnTRS_Pest",i,"_B50"),
+           driver = "ESRI Shapefile",
+           overwrite_layer = TRUE)
+
+  # Remove the temporary files to avoid errors when processing multiple years
+  # remove(tmp_pst,tmp_shp)
+    
+}
+
+```
+
+
+
+
+

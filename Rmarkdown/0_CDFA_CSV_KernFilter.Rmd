@@ -1,0 +1,97 @@
+---
+title: "Kern Filter applied to original CDFA data"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**The purpose of this Rmarkdown file is to filter the CDFA data for Kern County, then write an output CSV of the filtered data**
+
+**Notes:**
+
+The data being read in with the read_csv() function is the original CDFA data. In the original data, years 2013-2017 were seperated by tabs in the same excel (.xcls) sheet. Prior to being read in to this Rmarkdown document, each tab was made into it's own individual .csv file in Excel becase R does not deal with .xcls sheets as well, especially those with multiple tabs.
+
+**Output:**
+
+- CDFA data for years 2013 to 2017 for Kern County
+- ../R_output/CSV/CDFA/kern_filter/Kern_CDFA_APNs_'year'.csv
+
+---
+
+#### 1. Read in CSVs
+The data being read in with the read_csv() function is from the original CDFA data. Years 2013-2017 were seperated by tabs in the same excel (.xcls) sheet. Prior to being read in to this Rmarkdown document, each tab was converted into an individual .csv file in Excel becase R does not deal with .xcls sheets well, especially those with multiple tabs
+
+```{r read_in_CSVs, message=FALSE, warning=FALSE}
+library(tidyverse)
+
+# Specify years to be icluded in this filtering process
+years = 2013:2017
+
+# Read in CSV of APNs for each year 'i'
+for(i in years){
+  
+  # Read in specific year's CDFA CSV file
+  tmp = read_csv(paste0("../R_input/CSV/CDFA/original/CDFA_OrgAPNs_",i,".csv")) %>% 
+    as.data.frame()
+  
+  # Assign a simple name to the dataframe
+  assign(paste0("APN_",i),tmp) 
+  
+  # Remove the 'tmp' dataframe to ensure there will be no accidental 
+  # cross over between years i.e. processing 'tmp' for the wrong year
+  rm(tmp)
+  
+  }
+
+head(APN_2013,5) # Below is a 5-row sampleof the complete CDFA dataframe
+```
+
+#### 2. Filter year 'i' dataframe for Kern County only
+The original CDFA data included information for the whole state
+```{r kern_filter, message=FALSE, warning=FALSE}
+
+for(i in years){
+  
+  tmp = eval( # Evaluate what the name refers to -- In combintation these commands are telling to 
+    # grab a specific dataframe
+    as.name( # Tell R that the output of the paste0() command is the name of something
+      paste0("APN_",i))) %>% # Paste elements together
+    
+    filter(`Site County` == "Kern") # Once the right dataframe has been called, filter for the 
+  # county column for "Kern"
+  
+  assign(paste0("kern_APN_",i),tmp) # Assign a simple name to the output dataframe
+ 
+  rm(tmp) # Remove the temporary dataframe
+
+  }
+
+head(kern_APN_2013,5) # Below is a sample (n = 5) of the filtered dataframe 
+```
+
+#### 3. Export filtered CSV
+```{r export_as_CSV}
+# Export Kern APNs for each year
+# Create output directory
+dir.create("../R_output/CSV/original_kern_filter/",recursive = T)
+
+# Loop through each year
+for(i in years){
+  
+  write_csv(
+    eval( # Evaluate what the name refers to -- In combintation these commands are telling are to grab a specific dataframe
+      as.name( # Tell R that paste is a name
+        paste0("kern_APN_",i))), # Paste elements together 
+            
+    paste0("../R_output/CSV/original_kern_filter/",i,".csv")) # Write the output .csv file
+  
+}
+
+```
+
+
+

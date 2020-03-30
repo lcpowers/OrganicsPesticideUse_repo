@@ -1,0 +1,148 @@
+---
+title: "All Crop Summary Stats -- CDFA Organics"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**The purpose of this Rmarkdown file is look at descriptive statistics of all crop fields in Kern County to get a broad overview of differences between conventional and organic agriculture fields. Values for the following categories are determined and put into an output table: **  
+      * Total number of fields (total_fields)
+      * Total hectares (total_hectares)
+      * Average Field Size (average_field_size)
+      * Average Soil Quality based on the storie Index Rating (average_soilQ)
+      * Total Active Ingredient/Pesticide Application (total_pest_app)
+      * Average Kg per hectare application of active ingredients (kg_per_hectare)
+
+***
+
+Notes:
+
+- This document and output are the same as in "7b_AllCrops_SummaryStats", except that the input for this file *only includes* organic fields identified by the CDFA APN *NOT* Kern Ag Shapefile attribute table ("ORGANIC" in the comm name)
+
+#### 1. Load packages, set working directory, and prevent scientific notation
+```{r packages_settings}
+
+library(rgdal)
+library(sf)
+library(tidyverse)
+library(reshape2)
+
+options(scipen = 9999)
+setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown")
+```
+
+#### 2. Read in full shapeile and convert to data.frame
+```{r read_in_shapefiles}
+
+crops_2017 = readOGR(paste0("../R_output/spatial/KernAg_CDFA_pest/2017/FINAL/KernAg_CDFA_Pest_FINAL.shp")) %>% 
+  st_as_sf()
+
+```
+
+#### 3. Find organic crop types that have at least 5 fields/sites
+```{r top_organic_crops}
+
+topCrops_df = crops_2017 %>% 
+  as.data.frame() %>% # Convert to data.frame
+  dplyr::select(-geometry) %>% # Remove geometry column
+  group_by(comm_dt) %>% # Group by COMM column
+  summarise(total_orgFields = sum(organic)) %>% # Sum the CDFA column. This tells us how much organic fields of each crop type there are
+  arrange(-total_orgFields) %>% # Sort the table in descending order of number of fields per crop type
+  filter(total_orgFields >= 5) # Get rid of crops with fewer than five fields
+
+comparison_crops = topCrops_df$comm_dt # Create a new vector with names of crops with at least five fields
+comparison_crops # Display in an Rmarkdown document
+```
+
+#### 4. Summary stats of all fields, conventional or organic, that contain one of the 19 crops listed above
+```{r all_fields}
+
+years = 2017
+
+for(i in years){
+    
+     tmp = eval(as.name(paste0("crops_",i))) %>% 
+       as.data.frame() %>% 
+       dplyr::select(-geometry) %>% 
+       filter(comm_dt %in% comparison_crops) %>% 
+       summarise(total_fields = n(),
+                 total_hectares = round(sum(acres*0.405/N_crps_),1),
+                 average_field_size = round(mean(acres*0.405/N_crps_),1),
+                 average_SoilQ = mean(storie, na.rm = T),
+                 total_pest_app = sum(KgPstAI),
+                 kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_))
+     
+     assign(paste0("all_",i,"_SumStats"),tmp)
+     
+  }
+
+```
+
+#### 5. Organic Field Summary Stats
+```{r org_sum_stats}
+for(i in years){
+    
+     tmp = eval(as.name(paste0("crops_",i))) %>% 
+       as.data.frame() %>% 
+       dplyr::select(-geometry) %>% 
+       filter(comm_dt %in% comparison_crops) %>% 
+       filter(organic == "1") %>% 
+       summarise(total_fields = n(),
+                 total_hectares = round(sum(acres*0.405/N_crps_),1),
+            average_field_size = round(mean(acres*0.405/N_crps_),1),
+            average_SoilQ = mean(storie, na.rm = T),
+            total_pest_app = sum(KgPstAI),
+            kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_))
+     
+     assign(paste0("Organic_",i,"_SumStats"),tmp)
+     
+}
+
+```
+
+#### 6. Conventional Field Summary Stats
+```{r conv_sum_stats}
+for(i in years){
+    
+     tmp = eval(as.name(paste0("crops_",i))) %>% 
+       as.data.frame() %>% 
+       dplyr::select(-geometry) %>% 
+       filter(comm_dt %in% comparison_crops) %>% 
+       filter(organic == "0") %>% 
+       summarise(total_fields = n(),
+                 total_hectares = round(sum(acres*0.405/N_crps_),1),
+            average_field_size = round(mean(acres*0.405/N_crps_),1),
+            average_SoilQ = mean(storie, na.rm = T),
+            total_pest_app = sum(KgPstAI),
+            kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_))
+     
+     assign(paste0("Conv_",i,"_SumStats"),tmp)
+     
+  }
+```
+
+#### 7. Combine summary tables into one. Remove '#' to write output CSV
+```{r combine_and_output}
+
+for(i in years){
+    
+        tmp = rbind(
+                 eval(as.name(paste0("all_",i,"_SumStats"))),
+                 eval(as.name(paste0("Conv_",i,"_SumStats"))),
+                 eval(as.name(paste0("Organic_",i,"_SumStats")))
+                 )
+     
+     rownames(tmp) = c("All_50","Conv_50","Org_50")
+     assign(paste0("ALL_",i,"_SumStats"),tmp)
+     
+     dir.create("../R_output/CSV/SummaryStatistics/")
+     
+     write_csv(tmp,paste0("../R_output/CSV/SummaryStatistics/All_Fields_",i,"_CDFAonly.csv"))
+        remove(tmp)
+}
+```
+

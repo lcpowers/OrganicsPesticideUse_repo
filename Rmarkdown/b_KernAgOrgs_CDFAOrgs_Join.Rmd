@@ -1,0 +1,222 @@
+---
+title: "KernAgOrgs_CDFAOrgs_Pest_Join"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### 1. Get packages and set working directory
+```{r}
+
+library(rgdal)
+library(tidyverse)
+library(sf)
+library(sp)
+library(raster) ## This will effect some dplyr functions -- specifically 'select'
+
+setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown")
+```
+
+
+#### 2. Do a spatial join of CDFA organics and Kern Ag organics
+```{r CDFA_KERN_union}
+
+# Specify years
+years = 2017 
+
+# For loop to join Kern Ag Organics with CDFA organics. In forloop structure for processing multiple years
+for(i in years){
+
+  # Create output directory
+  dir.create(paste0("../R_output/spatial/KernAgOrgs_CDFAOrgs_join/",i), recursive = T)
+  
+  # Read in CDFA parcel shapefile
+  cdfa = readOGR(paste0("../R_output/spatial/CDFA_commodities/",i,"/buffer50/CDFA_crops",i,"_B50.shp"))
+  
+  # Make sure it is in the correct projection
+  cdfa <- spTransform(cdfa,CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs ")) 
+  
+  # Create an sf.dataframe from shapefile attribute table and get rid of unnecessary columns
+  cdfa_sf = st_as_sf(cdfa) %>% 
+    dplyr::select(PERMIT,SITEID,PMT_SIT,COMM,CDFA,ACRES)
+  
+  # Read in kern ag data that is specifically the Kern Ag organic fields as determined
+  # by the 'COMM' column in previous Rmarkdown document
+  kernag = readOGR(paste0("../R_output/spatial/KernAg_organics/",i,"/KernAg_Orgs",i,".shp"))
+  
+  # Create an sf.dataframe from the shapefile attribute table
+  kernag_sf = st_as_sf(kernag)
+  
+  # make sure it is in the correct projection
+  kernag <- spTransform(kernag,CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs ")) 
+ 
+  # Do a spatial join on the CDFA and Kern Ag organics shapefiles (in sf.dataframe format)
+  all_orgs_shp_union = union(cdfa,kernag)
+  
+  # Get rid of unnecessary columns from joined sf.dataframe
+  union_sf = st_as_sf(all_orgs_shp_union) %>% 
+    dplyr::select(-COMM_CODE,-CITY,-SECTION,-MAILING,-STATE,-TOWNSHIP,
+                  -RANGE,-PMT_YEAR,-OP_ACT,-OP_INACT,-SYMBOL,-ZIP,-AGENT,-DT_INACT,-DT_ACT) 
+  
+  # Put each column into correct formate
+  union_sf$PERMIT.1 = as.character(union_sf$PERMIT.1)
+  union_sf$SITEID.1 = as.character(union_sf$SITEID.1)
+  union_sf$PMT_SIT = as.character(union_sf$PMT_SIT)
+  union_sf$S_STATU = as.character(union_sf$S_STATU)
+  union_sf$PERMITT = as.character(union_sf$PERMITT)
+  union_sf$COMPANY = as.character(union_sf$COMPANY)
+  union_sf$COMM.1 = as.character(union_sf$COMM.1)
+  union_sf$ACRES.1 = as.numeric(union_sf$ACRES.1)
+  union_sf$STORIE_ = as.numeric(union_sf$STORIE_)
+  union_sf$P_STATUS = as.character(union_sf$P_STATUS)
+  union_sf$PERMIT.2 = as.character(union_sf$PERMIT.2)
+  union_sf$SITEID.2 = as.character(union_sf$SITEID.2)
+  union_sf$S_STATUS = as.character(union_sf$S_STATUS)
+  union_sf$COMM.2 = as.character(union_sf$COMM.2)
+  union_sf$PMT_SITE = as.character(union_sf$PMT_SITE)
+  union_sf$PERMITTEE = as.character(union_sf$PERMITTEE)
+  union_sf$ACRES.2 = as.numeric(union_sf$ACRES.2)
+  union_sf$soil = as.numeric(union_sf$soil)
+  
+  # Merge information from each of the origin shapefiles
+  all_orgs_sf = st_sf(PERMIT = (ifelse(is.na(union_sf$PERMIT.1),
+                                     union_sf$PERMIT.2,
+                                     union_sf$PERMIT.1)),
+                      
+                      SITEID = (ifelse(is.na(union_sf$SITEID.1),
+                                                  union_sf$SITEID.2,
+                                                  union_sf$SITEID.1)),
+                      
+                      PMT_SITE = (ifelse(is.na(union_sf$PMT_SIT),
+                                                    union_sf$PMT_SITE,
+                                                    union_sf$PMT_SIT)),
+                      
+                      PERMITTEE = (ifelse(is.na(union_sf$PERMITT), 
+                                               union_sf$PERMITTEE, 
+                                               union_sf$PERMITT)),
+                      
+                      COMM = (ifelse(is.na(union_sf$COMM.1),
+                                          union_sf$COMM.2,
+                                          union_sf$COMM.1)),
+                      
+                      ACRES = (ifelse(is.na(union_sf$ACRES.1),
+                                           union_sf$ACRES.2,
+                                           union_sf$ACRES.1)),
+                      
+                      STORIE = (ifelse(is.na(union_sf$STORIE_),
+                                            union_sf$soil,
+                                            union_sf$STORIE_)),
+                           
+                      cdfa = (ifelse(union_sf$CDFA == 1,1,0)),
+                           
+                      kern_org = (ifelse(is.na(union_sf$CDFA),1,0)),
+                           
+                      cdfa_kern_org = rep(1,nrow(union_sf)),
+                           
+                      geometry = union_sf$geometry)
+  
+  all_orgs_sf$PMT_SITE = as.character(all_orgs_sf$PMT_SITE)
+  
+  # all_orgs_fltr = unique(all_orgs_sf[,3])
+  
+  # Turn back into shapefile
+  all_orgs_shp = as(all_orgs_sf, "Spatial")
+  
+  # Write output shapefile
+  writeOGR(all_orgs_shp,
+           dsn = "../R_output/spatial/KernAgOrgs_CDFAOrgs_join/2017/",
+           layer = "kernAgOrgs_CDFAOrgs_join",
+           driver = "ESRI Shapefile",
+           overwrite_layer = TRUE)
+  
+  }
+```
+
+#### 4. Merge back into full Kern Ag 2017 crop data
+```{r}
+all_kern_ag = readOGR("../R_input/spatial/kern_AG_withStorInd/2017/KernAg_with_StorInd_2017.shp") %>% 
+  st_as_sf() %>% 
+  dplyr::select(PERMIT,SITEID,PMT_SITE,PERMITTEE,COMM,ACRES,soil) %>% 
+  rename(STORIE = soil)
+
+all_kern_ag$cdfa = rep(NA,nrow(all_kern_ag))
+all_kern_ag$kern_org = rep(NA,nrow(all_kern_ag))
+all_kern_ag$cdfa_kern_org = rep(NA,nrow(all_kern_ag))
+
+org_pmtsites = as.character(unique(all_orgs_sf$PMT_SITE))
+
+all_kern_ag$PMT_SITE = as.character(all_kern_ag$PMT_SITE)
+
+all_kern_ag_fltr = all_kern_ag %>% 
+  filter(!PMT_SITE %in% org_pmtsites)
+
+all_orgs_all_ag = rbind(all_orgs_sf,all_kern_ag_fltr) 
+
+```
+
+#### 4. Merge with pesticide use data
+```{r get_pest_data}
+
+# Read in pesticide use data
+pest = read_csv("../R_input/CSV/PesticideUse/KernOrgCollapse1317.csv")
+
+# Filter for 2017 pesticide use data
+pest_2017 = pest %>% 
+  dplyr::filter(year == "2017")
+```
+
+#### 4. Merge Pesticide use data with KernAg+CDFA organics
+```{r merge_pest_and_organics}
+
+all_orgs_pest <- merge(all_orgs_all_ag, 
+                       pest_2017,
+                       by.x = 'PMT_SITE',
+                       by.y = 'permitsite')
+
+
+```
+
+#### 5. Prepare 'COMM' column for later processing
+```{r}
+output = all_orgs_pest %>% 
+  separate(col = "COMM", 
+       into = c("COMM_x","COMM_y"), 
+       sep = "-",
+       remove = FALSE)
+
+# Convert all COMM columns from factors to character strings
+output$COMM=as.character(output$COMM)
+output$COMM_x=as.character(output$COMM_x)
+output$COMM_y=as.character(output$COMM_y)
+
+# If the word 'ORGANIC' is in the COMM_y column, keep only the COMM_x column, 
+# otherwise keep the original value in the COMM column
+output$COMM_new <- ifelse(output$COMM_y == "ORGANIC"|is.na(output$COMM_y), output$COMM_x,output$COMM)
+
+# Combine all lettuce categories into one
+output$COMM_new <- ifelse(str_detect(output$COMM_new,"LETTUCE"),"LETTUCE",output$COMM_new)
+
+# Remove the COMM_x and COMM_y columns
+output = output %>% 
+  dplyr::select(-COMM_x,-COMM_y)
+
+output$cdfa = ifelse(is.na(output$cdfa),0,1)
+output$kern_org = ifelse(is.na(output$kern_org),0,1)
+output$cdfa_kern_org = ifelse(is.na(output$cdfa_kern_org),0,1)
+
+# Turn back into shapefile
+output_shp = as(output, "Spatial")
+
+# Create output directory
+dir.create("../R_output/spatial/KernAgOrgs_CDFAOrgs_pest")
+
+# Write output shapefile
+writeOGR(output_shp,
+           dsn = "../R_output/spatial/KernAgOrgs_CDFAOrgs_pest/2017/",
+           layer = "kernAgOrgs_CDFAOrgs_pesticide",
+           driver = "ESRI Shapefile",
+           overwrite_layer = TRUE)
+```
+
