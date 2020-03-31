@@ -2,7 +2,7 @@
 kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp = F){
   
   ### Load Kern County Agriculture shapefile
-  kern_ag_shp = readOGR(paste0("../R_input/spatial/kern_AG_withStorInd/",year,"/KernAg_with_StorInd_",year,".shp"))
+  kern_ag_shp = readOGR(paste0("../R_output/spatial/KernAg_withSoil/",year,"/KernAg_withSoil_",year,".shp"))
   
   ### Put into California Teale Albers
   kern_ag_shp = spTransform(kern_ag_shp, CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs "))
@@ -11,7 +11,7 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   kern_ag_sf = st_as_sf(kern_ag_shp)
   
   ### Load CDFA parcel shapefile
-  cdfa_prcl_shp = readOGR(paste0("../R_output/spatial/CDFA_Parcels/",year,"/CDFA_Parcels",year,".shp"))
+  cdfa_prcl_shp = readOGR(paste0("../R_output/spatial/CDFA_APN_parcels/",year,"/CDFA_Parcels_",year,".shp"))
   
   ### Create a buffer around each polygon
   cdfa_prcl_buffer = gBuffer(cdfa_prcl_shp, width = -buf_width, byid = TRUE)
@@ -33,9 +33,9 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
                   PERMITTEE,
                   "COMPANY" = company
                   ,COMM,
-                  CDFA,
+                  "CDFA"=cdfa,
                   ACRES,
-                  "STORIE" = soil,
+                  "SOILQ" = soil,
                   "COMM_GROUP" = SYMBOL)
   
   # Separate the COMM column by '-' into COMM_x and COMM_y
@@ -68,14 +68,14 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   output$CDFA = ifelse(is.na(output$CDFA),0,1)
   
   write_csv(output,
-            paste0("../R_output/CSV/CDFA_KernAg_join/","CDFA_KernAg_join",year,".csv"))
+            paste0("../R_output/CSV/CDFA_KernAg_join/CDFA_KernAg_all",year,".csv"))
   
   all_shp <- as(output,"Spatial")
   
   if(write_all_shp)
     {writeOGR(all_shp,
-           paste0("../R_output/spatial/KernAg_CDFA_join/",year,"/buffer",buf_width),
-           paste0("All_KernAg_CDFA_join",year,"_B",buf_width),
+           paste0("../R_output/spatial/CDFA_KernAg_join/",year,"/buffer",buf_width),
+           paste0("KernAg_CDFA_all_",year,"_B",buf_width),
            driver = "ESRI Shapefile",
            overwrite_layer = TRUE)}
   
@@ -85,7 +85,7 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   
   ### Write CSV to output directory
   write_csv(cdfa_sf,
-            paste0("../R_output/CSV/CDFA/Commodities/",year,"/CDFA_crops_",year,"_buf",buf_width,".csv"))
+            paste0("../R_output/CSV/CDFA_KernAg_join/",year,"/CDFA_KernAg_APNorg_",year,"_buf",buf_width,".csv"))
   
   ### Convert back into shapefile
   cdfa_shp <- as(cdfa_sf,"Spatial")
@@ -93,8 +93,8 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   ### Write shapefile to output directory
  if(write_cdfa_shp)
    {writeOGR(cdfa_shp,
-           paste0("../R_output/spatial/CDFA_commodities/",year,"/buffer",buf_width),
-           paste0("CDFA_crops",year,"_B",buf_width),
+           paste0("../R_output/spatial/CDFA_KernAg_join/",year,"/buffer",buf_width),
+           paste0("APN_org_",year,"_B",buf_width),
            driver = "ESRI Shapefile",
            overwrite_layer = TRUE)}
 

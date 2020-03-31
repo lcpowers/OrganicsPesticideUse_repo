@@ -41,7 +41,7 @@ library(rgeos) # need this for gBuffer
 library(sf) # Specific operations on different versions of shapefiles in R
 library(raster)
 
-setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown")
+setwd("~/Desktop/Organics_Final/Working/organics_repo/Rmarkdown")
 
 # Access function in .R document used to join Kern Agriculture and CDFA parcel shapefiles. 
 # See the .R file for more information about the function
@@ -74,16 +74,11 @@ for(i in years){
   
     # Create output directory for the output CSV file that lists the CDFA data 
     # with commodities from Kern Ag data attached
-    dir.create(paste0("../R_output/CSV/CDFA/Commodities/",i),
-               recursive = TRUE)
-    
-    # Create output directory for the CDFA_KernAg_join shapefile that is filtered 
-    # to contain only fields that matched to CDFA parcels
-    dir.create(paste0("../R_output/spatial/CDFA_commodities/",i,"/buffer",j),
+    dir.create(paste0("../R_output/CSV/CDFA_KernAg_join/",i),
                recursive = TRUE)
     
     # Create the output directory for the full CDFA_KernAg_join shapefile, no filters applied. 
-    dir.create(paste0("../R_output/spatial/KernAg_CDFA_join/",i,"/buffer",j),
+    dir.create(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer",j),
                recursive = TRUE)
     
     # Apply the function that is in the KernAg_CDFA_Join.R script
@@ -99,11 +94,11 @@ for(i in years){
 ```{r}
 
 # Read in data produced above. This is the cdfa data joined to kern county parcels on APN, then spatially joined to kern ag data in the above function
-kernAg_cdfaAPN <- readOGR("../R_output/spatial/KernAg_CDFA_join/2017/buffer50/All_KernAg_CDFA_join2017_B50.shp") %>% 
+kernAg_cdfaAPN <- readOGR("../R_output/spatial/CDFA_KernAg_join/2017/buffer50/KernAg_CDFA_join2017_B50.shp") %>% 
   st_as_sf()
 
 # This is the raw kern Ag data
-kernAg <- readOGR("../R_input/spatial/kern_AG_withStorInd/2017/KernAg_with_StorInd_2017.shp") %>% 
+kernAg <- readOGR("../R_output/spatial/KernAg_withSoil/2017/KernAg_withSoil_2017.shp") %>% 
   st_as_sf()
 
 # Get rid of unnecessary Kern ag columns
@@ -111,16 +106,11 @@ kernAg_select = kernAg %>%
   dplyr::select(PERMIT,SITEID,S_STATUS,COMM,PMT_SITE,PERMITTEE,ACRES,soil)
 
 # These are the sections that joined to CDFA data on TRS codes. Two producers used TRS codes instead of APNs, which is where TRS was pulled from 
-cdfa_sections <- readOGR("../R_output/spatial/CDFA_PLSSsections/cdfa_sections.shp") %>% 
-  st_as_sf()
-
-# Get rid of unnecessary columns
-cdfa_sections_select = cdfa_sections %>% 
-  dplyr::select(TRS,Organic_ID,Company) %>% 
+cdfa_sections <- readOGR("../R_output/spatial/CDFAtrs_sections/cdfa_sections.shp") %>% 
+  st_as_sf() %>% 
   mutate(TRS_match = 1)
 
-
-kernAg_sections_join <- st_join(kernAg_select,cdfa_sections_select,largest=T)
+kernAg_sections_join <- st_join(kernAg_select,cdfa_sections,largest=T)
 # With cdfa_sections in the x argument, this produces 91 observations
 # WIth kernAg_select in the x argument this produces 11729 observations
 
@@ -129,14 +119,14 @@ sum(kernAg_sections_join$TRS_match,na.rm = T)
 #1358...this is too many. See what happens after filter for Crystal Organic...
 
 kernAg_CDFA_TRS = st_as_sf(kernAg_sections_join) %>% 
-  filter(str_detect(PERMITTEE,"CRYSTAL ORGANIC")) %>% 
+  filter(str_detect(PERMITTEE,"ORGANIC") & !is.na(trs)) %>% 
   distinct(.,.keep_all = T)
-## This get it to 303
+## 298
 
 ## Joining the above parcels to the CDFA KernAG APN match data
 # Method 1
-CDFA_APNandTRS_AgJoin <- bind(as(kernAg_cdfaAPN,"Spatial"),as(kernAg_CDFA_TRS,"Spatial")) %>%
-  st_as_sf()
+# CDFA_APNandTRS_AgJoin <- bind(as(kernAg_cdfaAPN,"Spatial"),as(kernAg_CDFA_TRS,"Spatial")) %>%
+#   st_as_sf()
 
 # Method 2
 CDFA_APNandTRS_stJoin <- st_join(kernAg_cdfaAPN,kernAg_CDFA_TRS,largest=T)

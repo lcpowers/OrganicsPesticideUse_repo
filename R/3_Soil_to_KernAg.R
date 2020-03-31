@@ -13,16 +13,13 @@ Soil_to_KernAg_fun = function(year){
   
   ## Extract values from soil raster that correspond to each polygon in the ag shapefile
   r.vals = raster::extract(soil_ras, # Storie Index Raster Values
-                           ag_sf, # Extract based on polygon outlines in the Kern Ag shapefile
+                           ag_sf, # Extract based on Kern Ag polygon outlines from the Kern Ag shapefile
                            fun = mean, # Find the mean value of raster cells that overlap with each polygon
                            small = TRUE, # Include mean values for small polygons
                            weights = TRUE, # Add weights to be able to calculate weighted mean in the next step
                            normalizeWeights = TRUE,
                            na.rm = T, # Ignore NAs when calculating mean values
                            df = TRUE) # Return results as a data.frame
-  
-  ## Find the mean of the raster values within each polygon in the Kern Ag Shapefile
-  r.mean = lapply(r.vals,FUN=mean) 
   
   ## Add the mean values to the Kern Agriculture Shapefile
   ag_sf$soil = r.vals$layer  
@@ -32,8 +29,8 @@ Soil_to_KernAg_fun = function(year){
   
   ## Write output shapefile
   writeOGR(obj = ag_shp_withSoil,
-           dsn = paste0("../R_input/spatial/Kern_AG_withStorInd/",year,"/"),
-           layer = paste0("KernAg_with_StorInd_",year),
+           dsn = paste0("../R_output/spatial/KernAg_withSoil/",year,"/"),
+           layer = paste0("KernAg_withSoil_",year),
            driver = "ESRI Shapefile",
            overwrite_layer = TRUE)
   
