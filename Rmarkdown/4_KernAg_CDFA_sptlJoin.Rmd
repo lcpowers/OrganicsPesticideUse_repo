@@ -9,7 +9,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-**The purpose of this Rmarkdown file is to join CDFA parcels (CDFA data matched to Kern County parcels on APN) to Kern County Agriculture parcels.**
+**The purpose of this Rmarkdown file is to join CDFA organic parcels (CDFA data matched to Kern County parcels on APN or TRS codes) to Kern County Agriculture parcels.**
 
 **Notes:**
 
@@ -48,7 +48,7 @@ setwd("~/Desktop/Organics_Final/Working/organics_repo/Rmarkdown")
 source("../R/4_KernAg_CDFA_Join.R")
 ```
 
-#### 2. Implement the function for the years of interest and desired buffer width. See notes in the following code chunk for more information about buffer widths and how 50m was determined
+#### 2. Implement the function that performs a spatial join between APN-matched CDFA parcels and Kern Agriculture parcels for specific years and desired buffer width. See notes in the following code chunk for more information about buffer widths and how 50m was determined
 ```{r implement_function, message=FALSE, warning=FALSE}
 # Years of interest
 years = 2017
@@ -82,7 +82,7 @@ for(i in years){
                recursive = TRUE)
     
     # Apply the function that is in the KernAg_CDFA_Join.R script
-  kernAg_CDFA_joinFun(i, buf_width = j, write_all_shp = T, write_cdfa_shp = T)
+    kernAg_CDFA_joinFun(i, buf_width = j, write_all_shp = T, write_cdfa_shp = T)
  
      }
   }
@@ -90,14 +90,14 @@ for(i in years){
 ```
 
 
-## Read in data produced above, Kern Ag data, and CDFA TRS Section data
-```{r}
+#### 3. Perform spatial join between CDFA TRS-matched sections and Kern Agriculture Parcels -- Extract Ag parcels that overlap with CDFA sections AND contain the word 'organic' in the company name. 
+```{r trs_ag_join}
 
 # Read in data produced above. This is the cdfa data joined to kern county parcels on APN, then spatially joined to kern ag data in the above function
-kernAg_cdfaAPN <- readOGR("../R_output/spatial/CDFA_KernAg_join/2017/buffer50/KernAg_CDFA_join2017_B50.shp") %>% 
+kernAg_cdfa_APN <- readOGR("../R_output/spatial/CDFA_KernAg_join/2017/buffer50/KernAg_CDFA_all_2017_B50.shp") %>% 
   st_as_sf()
 
-# This is the raw kern Ag data
+# Read in Kern Ag with Soil info shapefile
 kernAg <- readOGR("../R_output/spatial/KernAg_withSoil/2017/KernAg_withSoil_2017.shp") %>% 
   st_as_sf()
 
@@ -105,79 +105,59 @@ kernAg <- readOGR("../R_output/spatial/KernAg_withSoil/2017/KernAg_withSoil_2017
 kernAg_select = kernAg %>% 
   dplyr::select(PERMIT,SITEID,S_STATUS,COMM,PMT_SITE,PERMITTEE,ACRES,soil)
 
-# These are the sections that joined to CDFA data on TRS codes. Two producers used TRS codes instead of APNs, which is where TRS was pulled from 
+# Read in shaepfile of the PLSS Sections that joined to CDFA data on TRS codes. 
+# Two producers used TRS codes instead of APNs, which is where TRS was pulled from 
 cdfa_sections <- readOGR("../R_output/spatial/CDFAtrs_sections/cdfa_sections.shp") %>% 
   st_as_sf() %>% 
   mutate(TRS_match = 1)
 
+# Spatial join between kern ag parcels and cdfa sections, maintain the shape of the kern ag polygons
 kernAg_sections_join <- st_join(kernAg_select,cdfa_sections,largest=T)
-# With cdfa_sections in the x argument, this produces 91 observations
-# WIth kernAg_select in the x argument this produces 11729 observations
 
-# Check how many trs matches stayed in this data set
-sum(kernAg_sections_join$TRS_match,na.rm = T)
-#1358...this is too many. See what happens after filter for Crystal Organic...
+# Filter above spatial join ouput for the parcels that: (1) Matched a PLSS Section TRS code with CDFA TRS code (2) Succesfully joined to an Ag parcel and (3) contained the word "ORGANIC" in the Permittee column
 
-kernAg_CDFA_TRS = st_as_sf(kernAg_sections_join) %>% 
-  filter(str_detect(PERMITTEE,"ORGANIC") & !is.na(trs)) %>% 
-  distinct(.,.keep_all = T)
+kernAg_cdfa_TRS = st_as_sf(kernAg_sections_join) %>% # Convert into a simple features DF
+  filter(str_detect(PERMITTEE,"ORGANIC") & !is.na(trs)) %>% # Filter for the word 'Organic' in the permittee column
+  dplyr::select("permittee" = PERMITTEE,
+               company,
+               "trs_match" = TRS_match)
+
+
 ## 298
 
-## Joining the above parcels to the CDFA KernAG APN match data
-# Method 1
-# CDFA_APNandTRS_AgJoin <- bind(as(kernAg_cdfaAPN,"Spatial"),as(kernAg_CDFA_TRS,"Spatial")) %>%
-#   st_as_sf()
+# Join TRS section data to Kern Ag/CDFA_APN data. 
+cdfa_APNtoTRS_join <- st_join(kernAg_cdfa_APN,
+                                 kernAg_cdfa_TRS,
+                                 largest=T,
+                                 suffix = c(".apn",".trs"))
 
-# Method 2
-CDFA_APNandTRS_stJoin <- st_join(kernAg_cdfaAPN,kernAg_CDFA_TRS,largest=T)
+# Filter data.frame to remove joins that seem false (permittee columns not equal)
+APNtoTRS_joinFilter = cdfa_APNtoTRS_join %>% 
+  filter(permittee == PERMITTEE|is.na(permittee)) # This filter removes spatial joins in which the permittee columns do not match, indicating a false join. It removes a total of 17 fields, or 0.15% of the total fields
 
-# Checking this:
-CDFA_APNandTRS_stJoin_check <- CDFA_APNandTRS_stJoin %>% 
-  filter(PERMITTEE.x == "CRYSTAL ORGANIC FARMS, LLC" & Company!="Grimmway Enterprises Inc.")
-# Zero
+# Clean up dataframe before export
+APNtoTRS_joinFinal <- APNtoTRS_joinFilter %>% 
+  dplyr::select("permitsite" = PMT_SITE,
+         "s_status" = S_STATUS,
+         "permittee" = PERMITTEE,
+         "comm_grp"=COMM_GROUP,
+         "comm" = COMM,
+         "comm_edit"=COMM_new,
+         "acres"=ACRES,
+         "soil_q"=SOILQ,
+         "apn_match"=CDFA,
+         trs_match)
 
-CDFA_APNandTRS_stJoin_check <- CDFA_APNandTRS_stJoin %>% 
-  filter(PERMITTEE.x == "CRYSTAL ORGANIC FARMS, LLC")
-# 759
+# Replace NAs with 0s in the trs_match column
+APNtoTRS_joinFinal$trs_match <- ifelse(is.na(APNtoTRS_joinFinal$trs_match),0,APNtoTRS_joinFinal$trs_match)
 
-kernAg_crystal = kernAg %>% 
-  filter(PERMITTEE == "CRYSTAL ORGANIC FARMS, LLC")
-# 759
+# Create a binary organic column based on the apn_match and trs_match columns. If either of those indicates that the parcel is organic then the value in the binary organic column == 1.
+APNtoTRS_joinFinal$organic <- ifelse(APNtoTRS_joinFinal $apn_match==1|APNtoTRS_joinFinal$trs_match==1,1,0)
 
-# CDFA_APNandTRS_AgJoin <- bind(kernAg_cdfaAPN,kernAg_CDFA_TRS) %>% 
-#   st_as_sf()
-
-CDFA_APNandTRS_stJoin_sf = st_as_sf(CDFA_APNandTRS_stJoin)
-## 11729
-
-mismatches = which(!(CDFA_APNandTRS_stJoin_sf$PERMITTEE.x == CDFA_APNandTRS_stJoin_sf$PERMITTEE.y))
-
-CDFA_APNandTRS_stJoin_sf = CDFA_APNandTRS_stJoin_sf[-as.numeric(mismatches),]
-## 11711
-
-CDFA_APNandTRS_stJoin_sf = CDFA_APNandTRS_stJoin_sf[,c(1:12,24)]
-
-CDFA_APNandTRS_stJoin_sf$organic <- ifelse(CDFA_APNandTRS_stJoin_sf$CDFA == 1,1,CDFA_APNandTRS_stJoin_sf$TRS_match)
-CDFA_APNandTRS_stJoin_sf$organic <- ifelse(is.na(CDFA_APNandTRS_stJoin_sf$organic),0,1)
-
-colnames(CDFA_APNandTRS_stJoin_sf) = c("permit",
-                                "siteid",
-                                "permitsite",
-                                "s_status",
-                                "permittee",
-                                "company",
-                                "comm",
-                                "cdfa_apn",
-                                "acres",
-                                "storie",
-                                "comm_group",
-                                "comm_edit",
-                                "cdfa_trs",
-                                "geometry","organic")
-
-writeOGR(obj = as(CDFA_APNandTRS_stJoin_sf,"Spatial"),
-         dsn = "../R_output/spatial/KernAg_CDFA_join/2017/buffer50/",
-         layer = "TRSandAPN",
+# Write Output File
+writeOGR(obj = as(APNtoTRS_joinFinal,"Spatial"),
+         dsn = "../R_output/spatial/CDFA_KernAg_join/2017/buffer50/",
+         layer = "TRSandAPN_organics",
          driver = "ESRI Shapefile",
          overwrite_layer = T)
 
