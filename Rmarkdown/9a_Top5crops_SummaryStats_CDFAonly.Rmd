@@ -15,10 +15,10 @@ library(rgdal)
 library(sf)
 library(tidyverse)
 library(rgdal)
-setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown")
+setwd("~/Desktop/Organics_Final/Working/organics_repo/Rmarkdown/")
 options(scipen = 9999)
 
-raw_df = readOGR("../R_output/spatial/KernAg_CDFA_pest/2017/FINAL/KernAg_CDFA_Pest_FINAL.shp") %>% 
+raw_df = readOGR("../R_output/spatial/final_organics_data/cdfa_organics.shp") %>% 
   st_as_sf() %>% 
   as.data.frame() %>% 
   dplyr::select(-geometry)
@@ -32,28 +32,31 @@ raw_df$comm_dt = as.factor(raw_df$comm_dt)
 df_fltr = raw_df %>% 
      group_by(comm_dt) %>% 
      summarise(total_fields = n(),
-               organic_fields = sum(organic)) %>% 
-  filter(organic_fields > 10) %>% 
+               organic_fields = sum(organic),
+               conv_fields = n()-sum(organic)) %>% 
+  filter(organic_fields > 9 & conv_fields > 9) %>% 
   arrange(-organic_fields)
 
-# top19_crops = df_fltr$comm_dt
-# top19_crops
+common_crops = as.character(df_fltr$comm_dt)
+top5_crops = as.character(head(df_fltr$comm_dt,5))
 
-top5 = head(df_fltr,5)
-top5_crops = top5$comm_dt
-top5_crops
+# crop1 = as.character(top_crops[1])
+# crop2 = as.character(top_crops[2])
+# crop3 = as.character(top_crops[3])
+# crop4 = as.character(top_crops[4])
+# crop5 = as.character(top_crops[5])
 ```
 
 #### 4. Initialize emptry matrices for organic and conventional crops
 ```{r initialize_matrices}
 
-O_matrix = matrix(ncol = 8, nrow = 7)
-colnames(O_matrix) = c("Ann_KgAI_perH","birds","bees", "mmls","aqsp","reps","soil","avg_fldsz")
-rownames(O_matrix) = c("overall","sharedcrops","grape","carrot","lettuce","orange","swisschard")
+O_matrix = matrix(ncol = 9, nrow = 7)
+colnames(O_matrix) = c("total_fields","avg_fldsz","soil","Ann_KgAI_perH","birds","bees", "mmls","aqsp","reps")
+rownames(O_matrix) = c("overall","sharedcrops",top5_crops[1],top5_crops[2],top5_crops[3],top5_crops[4],top5_crops[5])
 
-C_matrix = matrix(ncol = 8, nrow = 7)
-colnames(C_matrix) = c("Ann_KgAI_perH","birds","bees", "mmls","aqsp","reps","soil","avg_fldsz")
-rownames(C_matrix) = c("overall","sharedcrops","grape","carrot","lettuce","orange","swisschard")
+C_matrix = matrix(ncol = 9, nrow = 7)
+colnames(C_matrix) = c("total_fields","avg_fldsz","soil","Ann_KgAI_perH","birds","bees", "mmls","aqsp","reps")
+rownames(C_matrix) = c("overall","sharedcrops",top5_crops[1],top5_crops[2],top5_crops[3],top5_crops[4],top5_crops[5])
 
 ```
 
@@ -63,205 +66,115 @@ rownames(C_matrix) = c("overall","sharedcrops","grape","carrot","lettuce","orang
 # For all ORGANIC fields
 org_df = raw_df %>% 
   dplyr::filter(organic == 1)
+rowi = 1
 
-O_matrix[1,1] = sum(org_df$KgPstAI)/sum(org_df$HE) # Average Kg AI per acre
-O_matrix[1,2] = sum(org_df$KgABrds)/sum(org_df$HE) # Average kg AI toxic to birds per acre
-O_matrix[1,3] = sum(org_df$KgAiBes)/sum(org_df$HE) # Average kg AI toxic to bees per acre
-O_matrix[1,4] = sum(org_df$KgAMmml)/sum(org_df$HE) # Average kg AI toxic to mammals per acre
-O_matrix[1,5] = sum(org_df$KgAAqSp)/sum(org_df$HE) # Average kg AI toxic to aquatic species per acre
-O_matrix[1,6] = sum(org_df$KgARptA)/sum(org_df$HE) # Average kg AI toxic to reptiles per acre
-O_matrix[1,7] = mean(org_df$STORIE, na.rm = TRUE) # Average Storie Index value
-O_matrix[1,8] = mean(org_df$HE) # Average Field Size
+O_matrix[rowi,1] = nrow(org_df)
+O_matrix[rowi,2] = mean(org_df$hectars) # Average Field Size
+O_matrix[rowi,3] = mean(org_df$soil_q, na.rm = TRUE) # Average Storie Index value
+O_matrix[rowi,4] = sum(org_df$KgPstAI)/sum(org_df$hectars) # Average Kg AI per acre
+O_matrix[rowi,5] = sum(org_df$KgABrds)/sum(org_df$hectars) # Average kg AI toxic to birds per acre
+O_matrix[rowi,6] = sum(org_df$KgAiBes)/sum(org_df$hectars) # Average kg AI toxic to bees per acre
+O_matrix[rowi,7] = sum(org_df$KgAMmml)/sum(org_df$hectars) # Average kg AI toxic to mammals per acre
+O_matrix[rowi,8] = sum(org_df$KgAAqSp)/sum(org_df$hectars) # Average kg AI toxic to aquatic species per acre
+O_matrix[rowi,9] = sum(org_df$KgARptA)/sum(org_df$hectars) # Average kg AI toxic to reptiles per acre
 
+# For crops that occur on at least 10 organic fields and 10 conventional fields
 
-# For organic fields that have at least 5 fields with the same crop type
+df = org_df %>% 
+  filter(comm_dt %in% common_crops)
+rowi = 2
 
-org_df_19 = org_df %>%  
-  dplyr::filter(org_df$comm_dt %in% top19_crops)
+O_matrix[rowi,1] = nrow(df)
+O_matrix[rowi,2] = mean(df$hectars) # Average Field Size
+O_matrix[rowi,3] = mean(df$soil_q, na.rm = TRUE) # Average Storie Index value
+O_matrix[rowi,4] = sum(df$KgPstAI)/sum(df$hectars) # Average Kg AI per acre
+O_matrix[rowi,5] = sum(df$KgABrds)/sum(df$hectars) # Average kg AI toxic to birds per acre
+O_matrix[rowi,6] = sum(df$KgAiBes)/sum(df$hectars) # Average kg AI toxic to bees per acre
+O_matrix[rowi,7] = sum(df$KgAMmml)/sum(df$hectars) # Average kg AI toxic to mammals per acre
+O_matrix[rowi,8] = sum(df$KgAAqSp)/sum(df$hectars) # Average kg AI toxic to aquatic species per acre
+O_matrix[rowi,9] = sum(df$KgARptA)/sum(df$hectars) # Average kg AI toxic to reptiles per acre
 
-O_matrix[2,1] = sum(org_df_19$KgPstAI)/sum(org_df_19$HE)
-O_matrix[2,2] = sum(org_df_19$KgABrds)/sum(org_df_19$HE)
-O_matrix[2,3] = sum(org_df_19$KgAiBes)/sum(org_df_19$HE)
-O_matrix[2,4] = sum(org_df_19$KgAMmml)/sum(org_df_19$HE)
-O_matrix[2,5] = sum(org_df_19$KgAAqSp)/sum(org_df_19$HE)
-O_matrix[2,6] = sum(org_df_19$KgARptA)/sum(org_df_19$HE)
-O_matrix[2,7] = mean(org_df_19$STORIE, na.rm = TRUE)
-O_matrix[2,8] = mean(org_df_19$HE)
+for(i in 1:length(top5_crops)){
+  
+  df = org_df %>% 
+    filter(comm_dt == top5_crops[i])
+  
+  print(top5_crops[i])
+  
+  O_matrix[i+2,1] = nrow(df)
+  O_matrix[i+2,2] = mean(df$hectars) # Average Field Size
+  O_matrix[i+2,3] = mean(df$soil_q, na.rm = TRUE) # Average Storie Index value
+  O_matrix[i+2,4] = sum(df$KgPstAI)/sum(df$hectars) # Average Kg AI per acre
+  O_matrix[i+2,5] = sum(df$KgABrds)/sum(df$hectars) # Average kg AI toxic to birds per acre
+  O_matrix[i+2,6] = sum(df$KgAiBes)/sum(df$hectars) # Average kg AI toxic to bees per acre
+  O_matrix[i+2,7] = sum(df$KgAMmml)/sum(df$hectars) # Average kg AI toxic to mammals per acre
+  O_matrix[i+2,8] = sum(df$KgAAqSp)/sum(df$hectars) # Average kg AI toxic to aquatic species per acre
+  O_matrix[i+2,9] = sum(df$KgARptA)/sum(df$hectars) # Average kg AI toxic to reptiles per acre
 
-# For Organic grapes
-org_df_grape = org_df %>% 
-  filter(comm_dt == top5_crops[1])
+}
 
-O_matrix[3,1] = sum(org_df_grape$KgPstAI)/sum(org_df_grape$HE)
-O_matrix[3,2] = sum(org_df_grape$KgABrds)/sum(org_df_grape$HE)
-O_matrix[3,3] = sum(org_df_grape$KgAiBes)/sum(org_df_grape$HE)
-O_matrix[3,4] = sum(org_df_grape$KgAMmml)/sum(org_df_grape$HE)
-O_matrix[3,5] = sum(org_df_grape$KgAAqSp)/sum(org_df_grape$HE)
-O_matrix[3,6] = sum(org_df_grape$KgARptA)/sum(org_df_grape$HE)
-O_matrix[3,7] = mean(org_df_grape$STORIE, na.rm = TRUE)
-O_matrix[3,8] = mean(org_df_grape$HE)
-
-
-# For Organic Carrots
-org_df_carrot = org_df %>% 
-  filter(comm_dt == top5_crops[2])
-
-O_matrix[4,1] = sum(org_df_carrot$KgPstAI)/sum(org_df_carrot$HE)
-O_matrix[4,2] = sum(org_df_carrot$KgABrds)/sum(org_df_carrot$HE)
-O_matrix[4,3] = sum(org_df_carrot$KgAiBes)/sum(org_df_carrot$HE)
-O_matrix[4,4] = sum(org_df_carrot$KgAMmml)/sum(org_df_carrot$HE)
-O_matrix[4,5] = sum(org_df_carrot$KgAAqSp)/sum(org_df_carrot$HE)
-O_matrix[4,6] = sum(org_df_carrot$KgARptA)/sum(org_df_carrot$HE)
-O_matrix[4,7] = mean(org_df_carrot$STORIE, na.rm = TRUE)
-O_matrix[4,8] = mean(org_df_carrot$HE)
-
-# For organic Lettuce
-org_df_lettuce = org_df %>% 
-  filter(comm_dt == top5_crops[3])
-
-O_matrix[5,1] = sum(org_df_lettuce$KgPstAI)/sum(org_df_lettuce$HE)
-O_matrix[5,2] = sum(org_df_lettuce$KgABrds)/sum(org_df_lettuce$HE)
-O_matrix[5,3] = sum(org_df_lettuce$KgAiBes)/sum(org_df_lettuce$HE)
-O_matrix[5,4] = sum(org_df_lettuce$KgAMmml)/sum(org_df_lettuce$HE)
-O_matrix[5,5] = sum(org_df_lettuce$KgAAqSp)/sum(org_df_lettuce$HE)
-O_matrix[5,6] = sum(org_df_lettuce$KgARptA)/sum(org_df_lettuce$HE)
-O_matrix[5,7] = mean(org_df_lettuce$STORIE, na.rm = TRUE)
-O_matrix[5,8] = mean(org_df_lettuce$HE)
-
-# For organic oranges
-org_df_orange = org_df %>% 
-  filter(comm_dt == top5_crops[4])
-
-O_matrix[6,1] = sum(org_df_orange$KgPstAI)/sum(org_df_orange$HE)
-O_matrix[6,2] = sum(org_df_orange$KgABrds)/sum(org_df_orange$HE)
-O_matrix[6,3] = sum(org_df_orange$KgAiBes)/sum(org_df_orange$HE)
-O_matrix[6,4] = sum(org_df_orange$KgAMmml)/sum(org_df_orange$HE)
-O_matrix[6,5] = sum(org_df_orange$KgAAqSp)/sum(org_df_orange$HE)
-O_matrix[6,6] = sum(org_df_orange$KgARptA)/sum(org_df_orange$HE)
-O_matrix[6,7] = mean(org_df_orange$STORIE, na.rm = TRUE)
-O_matrix[6,8] = mean(org_df_orange$HE)
-
-
-# For organic swiss chard
-org_df_chard = org_df %>% 
-  filter(comm_dt == top5_crops[5])
-
-O_matrix[7,1] = sum(org_df_chard$KgPstAI)/sum(org_df_chard$HE)
-O_matrix[7,2] = sum(org_df_chard$KgABrds)/sum(org_df_chard$HE)
-O_matrix[7,3] = sum(org_df_chard$KgAiBes)/sum(org_df_chard$HE)
-O_matrix[7,4] = sum(org_df_chard$KgAMmml)/sum(org_df_chard$HE)
-O_matrix[7,5] = sum(org_df_chard$KgAAqSp)/sum(org_df_chard$HE)
-O_matrix[7,6] = sum(org_df_chard$KgARptA)/sum(org_df_chard$HE)
-O_matrix[7,7] = mean(org_df_chard$STORIE, na.rm = TRUE)
-O_matrix[7,8] = mean(org_df_chard$HE)
-
-
-O_df = round(as.data.frame(O_matrix),3)
-write_csv(O_df,"../R_output/CSV/SummaryStatistics/CDFAonly_organic_summary.csv")
+O_df = as.data.frame(round(O_matrix,4))
+O_df$rownms = row.names(O_matrix)
+write_csv(O_df,"../R_output/CSV/organic_summary_table_a.csv")
 ```
 
-#### 6. Fill in conventional matrix
-```{r conventional_matrix}
+#### 6. Fill in Conventional Matrix
+```{r conventional}
 
-# For all ORGANIC fields
+# For all CONVENTIONAL fields
 conv_df = raw_df %>% 
-  filter(organic == 0)
+  dplyr::filter(organic == 0)
 
-conv_df$comm_dt = as.character(conv_df$comm_dt)
+rowi = 1
 
-C_matrix[1,1] = sum(conv_df$KgPstAI)/sum(conv_df$HE) # Average Kg AI per acre
-C_matrix[1,2] = sum(conv_df$KgABrds)/sum(conv_df$HE) # Average kg AI toxic to birds per acre
-C_matrix[1,3] = sum(conv_df$KgAiBes)/sum(conv_df$HE) # Average kg AI toxic to bees per acre
-C_matrix[1,4] = sum(conv_df$KgAMmml)/sum(conv_df$HE) # Average kg AI toxic to mammals per acre
-C_matrix[1,5] = sum(conv_df$KgAAqSp)/sum(conv_df$HE) # Average kg AI toxic to aquatic species per acre
-C_matrix[1,6] = sum(conv_df$KgARptA)/sum(conv_df$HE) # Average kg AI toxic to reptiles per acre
-C_matrix[1,7] = mean(conv_df$STORIE, na.rm = TRUE) # Average Storie Index value
-C_matrix[1,8] = mean(conv_df$HE) # Average Field Size
+C_matrix[rowi,1] = nrow(conv_df)
+C_matrix[rowi,2] = mean(conv_df$hectars) # Average Field Size
+C_matrix[rowi,3] = mean(conv_df$soil_q, na.rm = TRUE) # Average Storie Index value
+C_matrix[rowi,4] = sum(conv_df$KgPstAI)/sum(conv_df$hectars) # Average Kg AI per acre
+C_matrix[rowi,5] = sum(conv_df$KgABrds)/sum(conv_df$hectars) # Average kg AI toxic to birds per acre
+C_matrix[rowi,6] = sum(conv_df$KgAiBes)/sum(conv_df$hectars) # Average kg AI toxic to bees per acre
+C_matrix[rowi,7] = sum(conv_df$KgAMmml)/sum(conv_df$hectars) # Average kg AI toxic to mammals per acre
+C_matrix[rowi,8] = sum(conv_df$KgAAqSp)/sum(conv_df$hectars) # Average kg AI toxic to aquatic species per acre
+C_matrix[rowi,9] = sum(conv_df$KgARptA)/sum(conv_df$hectars) # Average kg AI toxic to reptiles per acre
 
+# For crops that occur on at least 10 organic fields and 10 conventional fields
 
-# For organic fields that have at least 5 fields with the same crop type
-conv_df_19 = conv_df %>% 
-  filter(comm_dt %in% top19_crops)
+df = conv_df %>% 
+  filter(comm_dt %in% common_crops)
+rowi = 2
 
-C_matrix[2,1] = sum(conv_df_19$KgPstAI)/sum(conv_df_19$HE)
-C_matrix[2,2] = sum(conv_df_19$KgABrds)/sum(conv_df_19$HE)
-C_matrix[2,3] = sum(conv_df_19$KgAiBes)/sum(conv_df_19$HE)
-C_matrix[2,4] = sum(conv_df_19$KgAMmml)/sum(conv_df_19$HE)
-C_matrix[2,5] = sum(conv_df_19$KgAAqSp)/sum(conv_df_19$HE)
-C_matrix[2,6] = sum(conv_df_19$KgARptA)/sum(conv_df_19$HE)
-C_matrix[2,7] = mean(conv_df_19$STORIE, na.rm = TRUE)
-C_matrix[2,8] = mean(conv_df_19$HE)
+C_matrix[rowi,1] = nrow(df)
+C_matrix[rowi,2] = mean(df$hectars) # Average Field Size
+C_matrix[rowi,3] = mean(df$soil_q, na.rm = TRUE) # Average Storie Index value
+C_matrix[rowi,4] = sum(df$KgPstAI)/sum(df$hectars) # Average Kg AI per acre
+C_matrix[rowi,5] = sum(df$KgABrds)/sum(df$hectars) # Average kg AI toxic to birds per acre
+C_matrix[rowi,6] = sum(df$KgAiBes)/sum(df$hectars) # Average kg AI toxic to bees per acre
+C_matrix[rowi,7] = sum(df$KgAMmml)/sum(df$hectars) # Average kg AI toxic to mammals per acre
+C_matrix[rowi,8] = sum(df$KgAAqSp)/sum(df$hectars) # Average kg AI toxic to aquatic species per acre
+C_matrix[rowi,9] = sum(df$KgARptA)/sum(df$hectars) # Average kg AI toxic to reptiles per acre
 
-# For Organic grapes
-conv_df_grape = conv_df %>% 
-  filter(comm_dt == top5_crops[1])
+for(i in 1:length(top5_crops)){
+  
+  df = conv_df %>% 
+    filter(comm_dt == top5_crops[i])
+  
+  print(top5_crops[i])
+  
+  C_matrix[i+2,1] = nrow(df)
+  C_matrix[i+2,2] = mean(df$hectars) # Average Field Size
+  C_matrix[i+2,3] = mean(df$soil_q, na.rm = TRUE) # Average Storie Index value
+  C_matrix[i+2,4] = sum(df$KgPstAI)/sum(df$hectars) # Average Kg AI per acre
+  C_matrix[i+2,5] = sum(df$KgABrds)/sum(df$hectars) # Average kg AI toxic to birds per acre
+  C_matrix[i+2,6] = sum(df$KgAiBes)/sum(df$hectars) # Average kg AI toxic to bees per acre
+  C_matrix[i+2,7] = sum(df$KgAMmml)/sum(df$hectars) # Average kg AI toxic to mammals per acre
+  C_matrix[i+2,8] = sum(df$KgAAqSp)/sum(df$hectars) # Average kg AI toxic to aquatic species per acre
+  C_matrix[i+2,9] = sum(df$KgARptA)/sum(df$hectars) # Average kg AI toxic to reptiles per acre
 
-C_matrix[3,1] = sum(conv_df_grape$KgPstAI)/sum(conv_df_grape$HE)
-C_matrix[3,2] = sum(conv_df_grape$KgABrds)/sum(conv_df_grape$HE)
-C_matrix[3,3] = sum(conv_df_grape$KgAiBes)/sum(conv_df_grape$HE)
-C_matrix[3,4] = sum(conv_df_grape$KgAMmml)/sum(conv_df_grape$HE)
-C_matrix[3,5] = sum(conv_df_grape$KgAAqSp)/sum(conv_df_grape$HE)
-C_matrix[3,6] = sum(conv_df_grape$KgARptA)/sum(conv_df_grape$HE)
-C_matrix[3,7] = mean(conv_df_grape$STORIE, na.rm = TRUE)
-C_matrix[3,8] = mean(conv_df_grape$HE)
+  }
 
+C_df = as.data.frame(round(C_matrix,4))
+C_df$rownms = row.names(C_matrix)
+write_csv(C_df,"../R_output/CSV/conventional_summary_table_a.csv")
 
-# For Organic Carrots
-conv_df_carrot = conv_df %>% 
-  filter(comm_dt == top5_crops[2])
-
-C_matrix[4,1] = sum(conv_df_carrot$KgPstAI)/sum(conv_df_carrot$HE)
-C_matrix[4,2] = sum(conv_df_carrot$KgABrds)/sum(conv_df_carrot$HE)
-C_matrix[4,3] = sum(conv_df_carrot$KgAiBes)/sum(conv_df_carrot$HE)
-C_matrix[4,4] = sum(conv_df_carrot$KgAMmml)/sum(conv_df_carrot$HE)
-C_matrix[4,5] = sum(conv_df_carrot$KgAAqSp)/sum(conv_df_carrot$HE)
-C_matrix[4,6] = sum(conv_df_carrot$KgARptA)/sum(conv_df_carrot$HE)
-C_matrix[4,7] = mean(conv_df_carrot$STORIE, na.rm = TRUE)
-C_matrix[4,8] = mean(conv_df_carrot$HE)
-
-# For organic Lettuce
-conv_df_lettuce = conv_df %>% 
-  filter(comm_dt == top5_crops[3])
-
-C_matrix[5,1] = sum(conv_df_lettuce$KgPstAI)/sum(conv_df_lettuce$HE)
-C_matrix[5,2] = sum(conv_df_lettuce$KgABrds)/sum(conv_df_lettuce$HE)
-C_matrix[5,3] = sum(conv_df_lettuce$KgAiBes)/sum(conv_df_lettuce$HE)
-C_matrix[5,4] = sum(conv_df_lettuce$KgAMmml)/sum(conv_df_lettuce$HE)
-C_matrix[5,5] = sum(conv_df_lettuce$KgAAqSp)/sum(conv_df_lettuce$HE)
-C_matrix[5,6] = sum(conv_df_lettuce$KgARptA)/sum(conv_df_lettuce$HE)
-C_matrix[5,7] = mean(conv_df_lettuce$STORIE, na.rm = TRUE)
-C_matrix[5,8] = mean(conv_df_lettuce$HE)
-
-# For organic oranges
-conv_df_orange = conv_df %>% 
-  filter(comm_dt == top5_crops[4])
-
-C_matrix[6,1] = sum(conv_df_orange$KgPstAI)/sum(conv_df_orange$HE)
-C_matrix[6,2] = sum(conv_df_orange$KgABrds)/sum(conv_df_orange$HE)
-C_matrix[6,3] = sum(conv_df_orange$KgAiBes)/sum(conv_df_orange$HE)
-C_matrix[6,4] = sum(conv_df_orange$KgAMmml)/sum(conv_df_orange$HE)
-C_matrix[6,5] = sum(conv_df_orange$KgAAqSp)/sum(conv_df_orange$HE)
-C_matrix[6,6] = sum(conv_df_orange$KgARptA)/sum(conv_df_orange$HE)
-C_matrix[6,7] = mean(conv_df_orange$STORIE, na.rm = TRUE)
-C_matrix[6,8] = mean(conv_df_orange$HE)
-
-
-# For organic swiss chard
-conv_df_chard = conv_df %>% 
-  filter(comm_dt == top5_crops[5])
-
-C_matrix[7,1] = sum(conv_df_chard$KgPstAI)/sum(conv_df_chard$HE)
-C_matrix[7,2] = sum(conv_df_chard$KgABrds)/sum(conv_df_chard$HE)
-C_matrix[7,3] = sum(conv_df_chard$KgAiBes)/sum(conv_df_chard$HE)
-C_matrix[7,4] = sum(conv_df_chard$KgAMmml)/sum(conv_df_chard$HE)
-C_matrix[7,5] = sum(conv_df_chard$KgAAqSp)/sum(conv_df_chard$HE)
-C_matrix[7,6] = sum(conv_df_chard$KgARptA)/sum(conv_df_chard$HE)
-C_matrix[7,7] = mean(conv_df_chard$STORIE, na.rm = TRUE)
-C_matrix[7,8] = mean(conv_df_chard$HE)
-
-
-C_df = round(as.data.frame(C_matrix),3)
-write_csv(C_df,"../R_output/CSV/SummaryStatistics/CDFAonly_conventional_summary.csv")
 ```
-
 

@@ -31,7 +31,7 @@ library(tidyverse)
 library(rgdal)
 library(stringi)
 library(sf)
-setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown")
+setwd("~/Desktop/Organics_Final/Working/organics_repo/Rmarkdown/")
 
 # Avoid scientific notation in dataframes
 options(scipen = 9999) 
@@ -69,7 +69,7 @@ for(i in years){ # For each year...
   for(j in buf_width){ # And each buffer width...
   
   # Read in the joined KernAg_CDFA data...
-  tmp <- readOGR(paste0("../R_output/spatial/KernAg_CDFA_join/",i,"/buffer",j,"/TRSandAPN.shp")) %>% 
+  tmp <- readOGR(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer",j,"/TRSandAPN_organics.shp")) %>% 
   st_as_sf()
 
   # Assign a name
@@ -79,7 +79,6 @@ for(i in years){ # For each year...
     }
 }
 
-colnames(kern_ag_2017_B50)
 ```
 
 #### 4. Join pesticide data to Kern Agriculture/CDFA data by the 'permitsite' column. The 'permitsite' column is the unique identifier for each field, and is a concatenated version of the permit number and site ID. 
@@ -90,9 +89,6 @@ for(i in years){
   # Find the data.frame that was previously read in that corresponds 
   # to year.i and buffer_width.j
   tmp_ag = eval(as.name(paste0("kern_ag_",i,"_B",j)))
-  
-  # Rename the "PMT_SITE" column to "permitsite"
-  colnames(tmp_ag)[3] = "permitsite"
   
   # Find the pesticide use data.frame that corresponds to pest_data_year.i
   tmp_pst = eval(as.name(paste0("pest_data_",i)))
@@ -110,7 +106,7 @@ for(i in years){
 }
 ```
 
-#### 5. Determine the number of crops being grown on multi-crop fields (S_STATUS == "M") and add information to the KernAg_CDFA_pesticideUse dataframe shapefile.
+#### 5. Determine the number of crops being grown on multi-crop fields (s_status == "M") and add information to the KernAg_CDFA_pesticideUse dataframe shapefile.
 ```{r deal_with_Mfields}
 
 # Turn the 2017 kernAg_CDFA_pest shapefile into a simple features (spatial) data.frame
@@ -143,12 +139,12 @@ multicrop_df$permitsite_trim1 = ifelse(multicrop_df$s_status == "M",
 multicrop_df$permitsite_trim2 = ifelse(multicrop_df$s_status == "M",
                              
    # Grab the last character in the 'permitsite' string
-substr(x = multicrop_df$permitsite,
-start = nchar(multicrop_df$permitsite),
-stop = nchar(multicrop_df$permitsite)), 
+   substr(x = multicrop_df$permitsite,
+   start = nchar(multicrop_df$permitsite),
+   stop = nchar(multicrop_df$permitsite)), 
 
-# Otherwise make equal to NA
- NA)
+   # Otherwise make equal to NA
+   NA)
 
 # Create a new dataframe that has each unique 'permitsite' string in the first column
 # and the number of times it is repeated in the second column. Multi-crop fields (S_STATUS == M) 
@@ -180,7 +176,8 @@ colnames(multicrop_df_final) = c("permitsite","N_crops_prmtst")
 # Merge the final multicrop_df dataframe into the kernAg_CDFA_pest_2017 simple features data.frame
 kernAg_CDFA_pest_2017 = merge(kernAg_CDFA_pest_2017, multicrop_df_final, by = 'permitsite')
 kernAg_CDFA_pest_2017$acres = as.numeric(as.character(kernAg_CDFA_pest_2017$acres))
-kernAg_CDFA_pest_2017$HE = kernAg_CDFA_pest_2017$acres*0.405/kernAg_CDFA_pest_2017$N_crops_prmtst
+kernAg_CDFA_pest_2017$hectares = kernAg_CDFA_pest_2017$acres*0.405/kernAg_CDFA_pest_2017$N_crops_prmtst
+kernAg_CDFA_pest_2017$kgperhec = kernAg_CDFA_pest_2017$KgPestAI/kernAg_CDFA_pest_2017$hectares
 ```
 
 
@@ -198,14 +195,14 @@ for(i in years){
   # Turn it back into a shapefile
   tmp_shp = as(tmp_pst,"Spatial")
   
-  # Create an output directory 
-  dir.create(paste0("../R_output/spatial/KernAg_CDFA_pest/",i,"/B50"),
-               recursive = TRUE)
+  # # Create an output directory 
+  # dir.create(paste0("../R_output/spatial/KernAg_CDFA_pest/",i,"/B50"),
+  #              recursive = TRUE)
   
   # Write the shapefile in to the output directory
   writeOGR(tmp_shp,
-           "../R_output/spatial/KernAg_CDFA_pest/2017/B50/",
-           paste0("KernAg_CDFAapnTRS_Pest",i,"_B50"),
+           "../R_output/spatial/final_organics_data/",
+           "cdfa_organics",
            driver = "ESRI Shapefile",
            overwrite_layer = TRUE)
 
@@ -213,6 +210,8 @@ for(i in years){
   # remove(tmp_pst,tmp_shp)
     
 }
+
+
 
 ```
 

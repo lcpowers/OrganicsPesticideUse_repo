@@ -45,7 +45,7 @@ years = 2017
 for(i in years){
     
     # Read in shapefile for year i and buffer width j
-    tmp = readOGR(paste0("../R_output/spatial/KernAgOrgs_CDFAOrgs_pest/",i,"/kernAgOrgs_CDFAOrgs_pesticide.shp")) %>% 
+    tmp = readOGR("../R_output/spatial/final_organics_data/") %>% 
       st_as_sf()
  
     # Assign a name to the dataframe
@@ -56,7 +56,6 @@ for(i in years){
 }
 
 
-allOrgs_2017 = distinct(allOrgs_2017,PMT_SITE,.keep_all= TRUE)
 ```
 
 #### 3. Find organic crop types that have at least 5 fields/sites
@@ -65,12 +64,12 @@ allOrgs_2017 = distinct(allOrgs_2017,PMT_SITE,.keep_all= TRUE)
 topCrops_df = allOrgs_2017 %>% 
   as.data.frame() %>% # Convert to data.frame
   dplyr::select(-geometry) %>% # Remove geometry column
-  group_by(COMM_nw) %>% # Group by COMM column
-  summarise(total_orgFields = sum(cdf_kr_)) %>% # Sum the CDFA column. This tells us how much organic fields of each crop type there are
+  group_by(comm_dt) %>% # Group by COMM column
+  summarise(total_orgFields = sum(organic)) %>% # Sum the CDFA column. This tells us how many organic fields of each crop type there are
   arrange(-total_orgFields) %>% # Sort the table in descending order of number of fields per crop type
-  filter(total_orgFields >= 5) # Get rid of crops with fewer than five fields
+  filter(total_orgFields >= 10) # Get rid of crops with fewer than ten fields
 
-comparison_crops = topCrops_df$COMM_nw # Create a new vector with names of crops with at least five fields
+comparison_crops = topCrops_df$comm_dt # Create a new vector with names of crops with at least five fields
 comparison_crops # Display in an Rmarkdown document
 ```
 
@@ -78,19 +77,16 @@ comparison_crops # Display in an Rmarkdown document
 #### 4. Summary stats of all fields, conventional or organic, that contain one of the 19 crops listed above
 ```{r all_fields}
 
-allOrgs_2017$ACRES = as.numeric(as.character(allOrgs_2017$ACRES))
-allOrgs_2017$COMM_nw = as.factor(allOrgs_2017$COMM_nw)
-
 all_fields = allOrgs_2017 %>% 
  as.data.frame() %>% 
  dplyr::select(-geometry) %>% 
- filter(COMM_nw %in% comparison_crops) %>% 
+ filter(comm_dt %in% comparison_crops) %>% 
  summarise(total_fields = n(),
-           total_hectares = round(sum(ACRES*0.405),1),
-           average_field_size = round(mean(ACRES*0.405),1),
-           average_SoilQ = mean(STORIE, na.rm = T),
+           total_hectares = round(sum(hectars),1),
+           average_field_size = mean(hectars, na.rm = T),
+           avg_soil_q = mean(soil_q),
            total_pest_app = sum(KgPstAI),
-           kg_per_hectare = sum(KgPstAI)/sum(ACRES*0.405))
+           kg_per_hectare = mean(kgperhc))
      
 
 ```
@@ -101,14 +97,14 @@ all_fields = allOrgs_2017 %>%
 organic_fields = allOrgs_2017 %>% 
  as.data.frame() %>% 
  dplyr::select(-geometry) %>% 
- filter(COMM_nw %in% comparison_crops) %>% 
- filter(cdf_kr_ == "1") %>% 
+ filter(comm_dt %in% comparison_crops) %>% 
+ filter(organic == 1) %>% 
  summarise(total_fields = n(),
-           total_hectares = round(sum(ACRES*0.405),1),
-      average_field_size = round(mean(ACRES*0.405),1),
-      average_SoilQ = mean(STORIE, na.rm = T),
-      total_pest_app = sum(KgPstAI),
-      kg_per_hectare = sum(KgPstAI)/sum(ACRES*0.405))
+           total_hectares = round(sum(hectars),1),
+           average_field_size = mean(hectars, na.rm = T),
+           avg_soil_q = mean(soil_q),
+           total_pest_app = sum(KgPstAI),
+           kg_per_hectare = mean(kgperhc))
 
 ```
 
@@ -118,14 +114,14 @@ organic_fields = allOrgs_2017 %>%
 conv_fields = allOrgs_2017 %>% 
        as.data.frame() %>% 
        dplyr::select(-geometry) %>% 
-       filter(COMM_nw %in% comparison_crops) %>% 
-       filter(cdf_kr_ == "0") %>% 
-       summarise(total_fields = n(),
-                 total_hectares = round(sum(ACRES*0.405),1),
-            average_field_size = round(mean(ACRES*0.405),1),
-            average_SoilQ = mean(STORIE, na.rm = T),
-            total_pest_app = sum(KgPstAI),
-            kg_per_hectare = sum(KgPstAI)/sum(ACRES*0.405))
+       filter(comm_dt %in% comparison_crops) %>% 
+       filter(organic == 0) %>% 
+ summarise(total_fields = n(),
+           total_hectares = round(sum(hectars),1),
+           average_field_size = mean(hectars, na.rm = T),
+           avg_soil_q = mean(soil_q),
+           total_pest_app = sum(KgPstAI),
+           kg_per_hectare = mean(kgperhc))
 
 ```
 

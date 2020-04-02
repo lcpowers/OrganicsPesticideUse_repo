@@ -17,8 +17,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ---
 
-#### 1. Load packages and data
-```{r data_packages}
+#### 1. Load packages and cdfa_orgs
+```{r cdfa_orgs_packages}
 
 library(tidyverse)
 library(rgdal)
@@ -26,62 +26,72 @@ library(sf)
 
 setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown/")
 
-datawithTRS = readOGR("../R_output/spatial/KernAg_CDFA_pest/2017/B50/KernAg_CDFAapnTRS_Pest2017_B50.shp") %>% 
+# CDFA Organics
+cdfa_orgs = readOGR("../R_output/spatial/final_organics_data/cdfa_organics.shp") %>% 
   st_as_sf() 
-## Number of organic observations = 680
-sum(datawithTRS$organic)
 
-datanoTRS = readOGR("../R_output/spatial/KernAg_CDFA_pest/2017/B50/KernAg_CDFA_Pest2017_B50.shp") %>% 
-  st_as_sf()
-## Number of organic observations = 333
-sum(datanoTRS$CDFA)
+## Number of organic observations with TRS = 682
+sum(cdfa_orgs$organic)
 
-# 8531 before TRS match?
-# 8519 After TRS match -- The is likely from removing the 18 ros that were mismatches, but should check
+## Number of organic observations without TRS = 331
+sum(cdfa_orgs$apn_mtc)
 
-summary(data)
+# CDFA and Kern Ag Organics
+cdfa_kern_orgs = cdfa_orgs 
+cdfa_kern_orgs$organic = ifelse(cdfa_kern_orgs$apn_mtc==1|cdfa_kern_orgs$trs_mtc==1|str_detect(cdfa_kern_orgs$comm,"ORGANIC"),1,0)  
+
+# WRite this output file for later use
+writeOGR(as(cdfa_kern_orgs,"Spatial"),
+         dsn = "../R_output/spatial/final_organics_data/",
+         layer = "cdfa_with_KernAg_organics",
+         driver = "ESRI Shapefile")
+
+# Number of organic observations with APN, TRS, and Kern Ag Commodity with "-ORGANIC"
+sum(cdfa_kern_orgs$organic)
+# 741
+
 ```
 
 
-# Explore data by crop type and organic/conventional
+# Explore cdfa_orgs by crop type and organic/conventional
 ```{r find_top_crops}
-topCrops_df = data %>% 
-  as.data.frame() %>% # Convert to data.frame
+topCrops_df = cdfa_orgs %>% 
+  as.cdfa_orgs.frame() %>% # Convert to cdfa_orgs.frame
   dplyr::select(-geometry) %>% # Remove geometry column
   group_by(comm_dt) %>% # Group by COMM column
-  summarise(total_orgFields = sum(organic)) %>% # Sum the CDFA column. This tells us how many organic fields of each crop type there are
+  summarise(total_orgFields = sum(organic)) %>% # Sum the organic column. This tells us how many organic fields of each crop type there are
   arrange(-total_orgFields)
 
-comparison_crops = subset(topCrops_df, total_orgFields>4) %>%  # Create a new vector with names of crops with at least five fields
+comparison_crops = subset(topCrops_df, total_orgFields>10) %>%  # Create a new vector with names of crops with at least five fields
   dplyr::select(1) 
 
 comparison_crops = comparison_crops$comm_dt
 comparison_crops # Display in an Rmarkdown document
 
-data$KgAIperHe = data$KgPstAI/data$HE
+cdfa_orgs$KgAIperHe = cdfa_orgs$KgPstAI/cdfa_orgs$hectars
 ## 8531 observations before excluding outliers
 ```
 
-# Look for outliers in data
+# Look for outliers in CDFA organic crops
 
 ## All crops combined
 ```{r all_crops_outliers}
 
 par(mfrow=c(2,3))
-hist(data$KgAIperHe[data$CDFA==1],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$organic==1],
     main = "orgs",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$CDFA==1],main = "orgs")
-boxplot(data$KgAIperHe[data$CDFA==1],main="orgs")
 
-hist(data$KgAIperHe[data$CDFA==0],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$organic==1],main = "orgs")
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$organic==1],main="orgs")
+
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$organic==0],
     main = "conv",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$CDFA==0],main = "conv")
-boxplot(data$KgAIperHe[data$CDFA==0],main="conv")
-
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$organic==0],main = "conv")
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$organic==0],main="conv")
 
 ```
 
@@ -89,23 +99,23 @@ boxplot(data$KgAIperHe[data$CDFA==0],main="conv")
 ## By Crop Type
 ```{r by_crop_outliers}
 # Organic
-ggplot(subset(data,CDFA == 1&COMM_nw%in%comparison_crops), aes(x = KgAIperHe))+
+ggplot(subset(cdfa_orgs,organic == 1&COMM_nw%in%comparison_crops), aes(x = KgAIperHe))+
   geom_histogram()+
   facet_wrap(~COMM_nw,scales = "free")+
   theme_bw()
 
-ggplot(subset(data,CDFA == 1&COMM_nw%in%comparison_crops), aes(sample  = KgAIperHe)) +
+ggplot(subset(cdfa_orgs,organic == 1&COMM_nw%in%comparison_crops), aes(sample  = KgAIperHe)) +
   geom_qq() +
   facet_wrap(~COMM_nw,scales = "free") +
   theme_bw()
 
 # Conventional
-ggplot(subset(data,CDFA == 0), aes(x = KgAIperHe))+
+ggplot(subset(cdfa_orgs,organic == 0), aes(x = KgAIperHe))+
   geom_histogram()+
   facet_wrap(~COMM_nw,scales = "free")+
   theme_bw()
 
-ggplot(subset(data,CDFA == 0), aes(sample  = KgAIperHe)) +
+ggplot(subset(cdfa_orgs,organic == 0), aes(sample  = KgAIperHe)) +
   geom_qq() +
   facet_wrap(~COMM_nw,scales = "free") +
   theme_bw()
@@ -117,26 +127,26 @@ crop = 'CARROT'
 
 par(mfrow = c(2,3))
 
-hist(data$KgAIperHe[data$COMM_nw == crop &data$CDFA==1],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw == crop &cdfa_orgs$organic==1],
     main = "orgs",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
        main = "orgs")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
         main="orgs")
 
-hist(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
     breaks = 30,
     main = "conv",
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
        main = "conv")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
         main = "conv")
 
 # Remove carrot outliers
-# data = data[!(data$CDFA == 1 & data$KgAIperHe>1000 & data$COMM_nw == crop),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 1 & cdfa_orgs$KgAIperHe>1000 & cdfa_orgs$COMM_nw == crop),]
 
 ## 8529
 ```
@@ -147,27 +157,27 @@ crop = 'CABBAGE'
 
 par(mfrow = c(2,3))
 
-hist(data$KgAIperHe[data$COMM_nw == crop &data$CDFA==1],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw == crop &cdfa_orgs$organic==1],
     main = "orgs",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
        main = "orgs")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
         main="orgs")
 
-hist(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
     breaks = 30,
     main = "conv",
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
        main = "conv")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
         main = "conv")
 
 # Remove carrot outliers
-# data = data[!(data$CDFA == 1 & data$KgAIperHe>8 & data$COMM_nw == "CABBAGE"),]
-# data = data[!(data$CDFA == 0 & data$KgAIperHe>20 & data$COMM_nw == "CABBAGE"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 1 & cdfa_orgs$KgAIperHe>8 & cdfa_orgs$COMM_nw == "CABBAGE"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 0 & cdfa_orgs$KgAIperHe>20 & cdfa_orgs$COMM_nw == "CABBAGE"),]
 
 # 8527
 ```
@@ -178,27 +188,27 @@ crop = 'ORANGE'
 
 par(mfrow = c(2,3))
 
-hist(data$KgAIperHe[data$COMM_nw == crop &data$CDFA==1],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw == crop &cdfa_orgs$organic==1],
     main = "orgs",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
        main = "orgs")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
         main="orgs")
 
-hist(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
     breaks = 30,
     main = "conv",
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
        main = "conv")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
         main = "conv")
 
 # Remove Lemon outliers
-# data = data[!(data$CDFA == 1 & data$KgAIperHe>200 & data$COMM_nw == "ORANGE"),]
-# data = data[!(data$CDFA == 0 & data$KgAIperHe>500 & data$COMM_nw == "ORANGE"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 1 & cdfa_orgs$KgAIperHe>200 & cdfa_orgs$COMM_nw == "ORANGE"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 0 & cdfa_orgs$KgAIperHe>500 & cdfa_orgs$COMM_nw == "ORANGE"),]
 
 # 8524
 ```
@@ -210,27 +220,27 @@ crop = 'GARLIC'
 
 par(mfrow = c(2,3))
 
-hist(data$KgAIperHe[data$COMM_nw == crop &data$CDFA==1],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw == crop &cdfa_orgs$organic==1],
     main = "orgs",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
        main = "orgs")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
         main="orgs")
 
-hist(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
     breaks = 30,
     main = "conv",
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
        main = "conv")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
         main = "conv")
 
 # Remove GARLIC outliers
-# data = data[!(data$CDFA == 1 & data$KgAIperHe>60 & data$COMM_nw == "GARLIC"),]
-# data = data[!(data$CDFA == 0 & data$KgAIperHe>15 & data$COMM_nw == "GARLIC"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 1 & cdfa_orgs$KgAIperHe>60 & cdfa_orgs$COMM_nw == "GARLIC"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 0 & cdfa_orgs$KgAIperHe>15 & cdfa_orgs$COMM_nw == "GARLIC"),]
 
 ```
 
@@ -241,26 +251,26 @@ crop = 'SPINACH'
 
 par(mfrow = c(2,3))
 
-hist(data$KgAIperHe[data$COMM_nw == crop &data$CDFA==1],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw == crop &cdfa_orgs$organic==1],
     main = "orgs",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
        main = "orgs")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
         main="orgs")
 
-hist(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
     breaks = 30,
     main = "conv",
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
        main = "conv")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
         main = "conv")
 
 # Remove Lemon outliers
-# data = data[!(data$CDFA == 1 & data$KgAIperHe>50 & data$COMM_nw == "SPINACH"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 1 & cdfa_orgs$KgAIperHe>50 & cdfa_orgs$COMM_nw == "SPINACH"),]
 
 ```
 
@@ -270,27 +280,27 @@ crop = 'LETTUCE'
 
 par(mfrow = c(2,3))
 
-hist(data$KgAIperHe[data$COMM_nw == crop & data$CDFA==1],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw == crop & cdfa_orgs$organic==1],
     main = "orgs",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
        main = "orgs")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
         main="orgs")
 
-hist(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
     breaks = 30,
     main = "conv",
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
        main = "conv")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
         main = "conv")
 
 # Remove Lettuce outliers
-# data = data[!(data$CDFA == 1 & data$KgAIperHe>60 & data$COMM_nw == "LETTUCE"),]
-# data = data[!(data$CDFA == 0 & data$KgAIperHe>60 & data$COMM_nw == "LETTUCE"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 1 & cdfa_orgs$KgAIperHe>60 & cdfa_orgs$COMM_nw == "LETTUCE"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 0 & cdfa_orgs$KgAIperHe>60 & cdfa_orgs$COMM_nw == "LETTUCE"),]
 
 ```
 
@@ -299,22 +309,22 @@ boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
 crop = 'GRAPE'
 par(mfrow = c(2,3))
 
-hist(data$KgAIperHe[data$COMM_nw == crop &data$CDFA==1],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw == crop &cdfa_orgs$organic==1],
     main = "orgs",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
        main = "orgs")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
         main="orgs")
 
-hist(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
     main = "conv",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
        main = "conv")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
         main = "conv")
 
 
@@ -325,96 +335,96 @@ boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
 crop = 'POTATO'
 par(mfrow = c(2,3))
 
-hist(data$KgAIperHe[data$COMM_nw == crop &data$CDFA==1],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw == crop &cdfa_orgs$organic==1],
     main = "orgs",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
        main = "orgs")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==1],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==1],
         main="orgs")
 
-hist(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
     main = "conv",
     breaks = 30,
     xlab = "")
-qqnorm(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
        main = "conv")
-boxplot(data$KgAIperHe[data$COMM_nw==crop&data$CDFA==0],
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_nw==crop&cdfa_orgs$organic==0],
         main = "conv")
 
 # Remove potato outliers
-# data = data[!(data$CDFA == 1 & data$KgAIperHe>15 & data$COMM_nw == "POTATO"),]
-# data = data[!(data$CDFA == 0 & data$KgAIperHe>1500 & data$COMM_nw == "POTATO"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 1 & cdfa_orgs$KgAIperHe>15 & cdfa_orgs$COMM_nw == "POTATO"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 0 & cdfa_orgs$KgAIperHe>1500 & cdfa_orgs$COMM_nw == "POTATO"),]
 
 ```
 
-# Explore data by COMM_grp
+# Explore cdfa_orgs by COMM_grp
 ```{r comm_group_outliers}
 
 # Fruit
 group = "FRUIT"
 
 par(mfrow=c(2,3))
-boxplot(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
-qqnorm(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
-hist(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
 
-boxplot(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
-qqnorm(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
-hist(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
 
-# data = data[!(data$CDFA == 1 & data$KgAIperHe>1500 & data$COMM_GR == "FRUIT"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 1 & cdfa_orgs$KgAIperHe>1500 & cdfa_orgs$COMM_GR == "FRUIT"),]
 
 # Vegetables
 group = "VEGETABLE"
 
 par(mfrow=c(2,3))
-boxplot(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
-qqnorm(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
-hist(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
 
-boxplot(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
-qqnorm(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
-hist(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
 
-# data = data[!(data$CDFA == 1 & data$KgAIperHe>400 & data$COMM_GR == "VEGETABLE"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 1 & cdfa_orgs$KgAIperHe>400 & cdfa_orgs$COMM_GR == "VEGETABLE"),]
 
 
 # CITRUS
 group = "CITRUS"
 
 par(mfrow=c(2,3))
-boxplot(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
-qqnorm(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
-hist(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
 
-boxplot(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
-qqnorm(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
-hist(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
 
-# data = data[!(data$CDFA == 0 & data$KgAIperHe>400 & data$COMM_GR == "CITRUS"),]
+# cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 0 & cdfa_orgs$KgAIperHe>400 & cdfa_orgs$COMM_GR == "CITRUS"),]
 
 
 # NUTS
 group = "NUTS"
 
 par(mfrow=c(2,3))
-boxplot(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
-qqnorm(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
-hist(data$KgAIperHe[data$COMM_GR==group&data$CDFA==0], main = "conv")
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==0], main = "conv")
 
-boxplot(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
-qqnorm(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
-hist(data$KgAIperHe[data$COMM_GR==group&data$CDFA==1], main = "org")
+boxplot(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
+qqnorm(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
+hist(cdfa_orgs$KgAIperHe[cdfa_orgs$COMM_GR==group&cdfa_orgs$organic==1], main = "org")
 
 ```
 
 ## Remove cases from conventional fields that seem fishy because the word "Organic" is indiciated somewhere in the name.
 ```{r fishy_conventional}
 
-data$PERMITT = as.character(data$PERMITT) # Put the Permittee column in character format
-data = data[!(data$CDFA == 0&str_detect(data$PERMITT,"ORGANIC")),] # Remove observations that contain the word "organic" in the permittee column
+cdfa_orgs$PERMITT = as.character(cdfa_orgs$PERMITT) # Put the Permittee column in character format
+cdfa_orgs = cdfa_orgs[!(cdfa_orgs$organic == 0&str_detect(cdfa_orgs$PERMITT,"ORGANIC")),] # Remove observations that contain the word "organic" in the permittee column
 
 ```
 
@@ -422,11 +432,11 @@ data = data[!(data$CDFA == 0&str_detect(data$PERMITT,"ORGANIC")),] # Remove obse
 ## Write output shapefile
 ```{r write_output}
 
-data_shp = as(data,"Spatial")
+cdfa_orgs_shp = as(cdfa_orgs,"Spatial")
 
-writeOGR(data_shp,
-           "../R_output/spatial/KernAg_CDFA_pest/2017/FINAL",
-           "KernAg_CDFA_Pest_FINAL",
+writeOGR(cdfa_orgs_shp,
+           "../R_output/spatial/KernAg_organic_pest/2017/FINAL",
+           "KernAg_organic_Pest_FINAL",
            driver = "ESRI Shapefile",
            overwrite_layer = TRUE)
 

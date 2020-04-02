@@ -39,7 +39,7 @@ years = 2017 # 2013:2017
 #### This forloop reads in KernAg_CDFA_join shapefile, the shapefile that joined Kern Ag with CDFA parcels, for specific years and buffer widths ####
 for(i in years){
     
-    tmp = readOGR(paste0("../R_output/spatial/KernAg_CDFA_pest/",i,"/FINAL","/KernAg_CDFA_Pest_FINAL.shp")) %>% # Read in
+    tmp = readOGR("../R_output/spatial/final_organics_data/cdfa_organics.shp") %>% # Read in
       st_as_sf() # Convert to spatial dataframe
     
     # Create output name based on year and buffer width
@@ -57,7 +57,7 @@ topCrops_df = data_2017 %>%
   group_by(comm_dt) %>% 
   summarise(total_orgFields = sum(organic)) %>% 
   arrange(-total_orgFields) %>% 
-  filter(total_orgFields >= 15)
+  filter(total_orgFields >= 10)
 
 comparable_crops = topCrops_df$comm_dt
 ```
@@ -81,7 +81,7 @@ for(i in years){
        summarise(total_fields = n(), # Count total number of fields for each commodity
                  total_hectares = round(sum(acres*0.405/N_crps_),1), # Count hectares for each commodity
                  average_field_size = round(mean(acres*0.405/N_crps_),1), # Find average field size for each commodity
-                 average_SoilQ = mean(storie, na.rm = T), # Find average soil quality for each commodity
+                 average_SoilQ = mean(soil_q, na.rm = T), # Find average soil quality for each commodity
                  total_pest_app = sum(KgPstAI), # Total pesticide applied for this crop
                  kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_)) %>% # Pesticide per hectare
        arrange(comm_dt) # Arrange dataframe with total field column in descending order
@@ -112,7 +112,7 @@ for(i in years){
        summarise(total_fields = n(),
                  total_hectares = round(sum(acres*0.405/N_crps_),1),
                  average_field_size = round(mean(acres*0.405/N_crps_),1),
-                 average_SoilQ = mean(storie, na.rm = T),
+                 average_SoilQ = mean(soil_q, na.rm = T),
                  total_pest_app = sum(KgPstAI),
                  kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_)) %>% 
        arrange(comm_dt) # Arrange order of the 'crops' character vector
@@ -140,7 +140,7 @@ for(i in years){
        summarise(total_fields = n(),
                  total_hectares = round(sum(acres*0.405/N_crps_),1),
                  average_field_size = round(mean(acres*0.405/N_crps_),1),
-                 average_SoilQ = mean(storie, na.rm = T),
+                 average_SoilQ = mean(soil_q, na.rm = T),
                  total_pest_app = sum(KgPstAI),
                  kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_)) %>% 
        arrange(comm_dt) # Arrange order of the 'crops' character vector
