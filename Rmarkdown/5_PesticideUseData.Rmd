@@ -61,6 +61,7 @@ for(i in years){
 
 ```
 
+
 #### 3. Read in KernAg_CDFA shapefiles for each year and give unique name
 ```{r get_kernAg}
 
@@ -81,6 +82,7 @@ for(i in years){ # For each year...
 
 ```
 
+
 #### 4. Join pesticide data to Kern Agriculture/CDFA data by the 'permitsite' column. The 'permitsite' column is the unique identifier for each field, and is a concatenated version of the permit number and site ID. 
 ```{r join_KernAgCDFAData_to_pestData}
 
@@ -95,7 +97,11 @@ for(i in years){
   
   # Join the pesticide use data.frame to the 
   # Agriculture shapefile on 'permitsite' and keep only the rows that had mathches
-  join_pst = inner_join(tmp_ag,tmp_pst)
+  join_pst = left_join(tmp_ag,tmp_pst)
+  
+  join_pst$year = i
+  
+  join_pst[13:33][is.na(join_pst[13:33])] <- 0
   
   # Assign a unique name based on the year
   assign(paste0("kernAg_CDFA_pest_",i), join_pst)

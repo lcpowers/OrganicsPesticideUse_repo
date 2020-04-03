@@ -32,7 +32,7 @@ $Annual~kg/H = croptype + CDFA~organic + field~size + soil~quality$
 This is not important, it just gets rid of '-ORGANIC' from the commodity column and groups lettuce together, rather than having 'LETTUCE LEAF' and 'LETTUCE' as separate crop types. 
 ```{r get_data, echo=TRUE, message=FALSE, warning=FALSE}
 
-data = readOGR("../R_output/spatial/final_organics_data/cdfa_with_KernAg_organics.shp") %>% 
+data = readOGR("../R_output/spatial/final_organics_data/cdfa_organics.shp") %>% 
   st_as_sf()
 
 matching = data %>% 
@@ -42,7 +42,7 @@ matching = data %>%
      summarise(total_fields = n(),
                organic_fields = sum(organic),
                conv_fields = n()-sum(organic)) %>% 
-  filter(organic_fields > 5 & conv_fields > 5) %>% 
+  filter(organic_fields > 9 & conv_fields > 9) %>% 
   arrange(-organic_fields)
 
 common_crops = as.factor(as.character(matching$comm_dt))
@@ -51,7 +51,9 @@ org_groups = as.factor(as.character(data$cmm_grp[data$organic==1]))
 comm_regression_df = data %>% 
   as.data.frame() %>% 
   filter(soil_q > 0 & comm_dt%in%common_crops) %>% 
-  select("croptype" = comm_dt,
+  dplyr::select(permtst,
+         permitt,
+         "croptype" = comm_dt,
          organic,
          soil_q,
          KgPstAI,
@@ -61,7 +63,7 @@ comm_regression_df = data %>%
 commgroup_regression_df = data %>% 
   as.data.frame() %>% 
   filter(soil_q>0 & cmm_grp%in%org_groups) %>% 
-  select("group" = cmm_grp,
+  dplyr::select("group" = cmm_grp,
          "croptype"=comm_dt,
          organic,
          soil_q,
@@ -69,6 +71,20 @@ commgroup_regression_df = data %>%
          kgperhc,
          hectars)
 ```
+
+# Data Exploration
+```{r data_explore}
+
+ggplot(comm_regression_df, aes(x = organic, y = soil_q))+
+  geom_point()+
+  geom_line()
+
+ggplot(filter(comm_regression_df, ), aes(x = organic, y = hectars))+
+  geom_point()+
+  geom_line()
+
+```
+
 
 # Simple Linear Regression -- Just seeing how R is recognizing/processing covariates
 ```{r SLR}
@@ -92,7 +108,7 @@ summary(field_soil_lm)
 # Propensity score estimation for dataset with Crop reference variable
 ```{r estimate_scores}
 
-propensity_logit = glm(organic ~ croptype + soil_q + hectars, 
+propensity_logit = glm(organic ~ croptype + soil_q, 
                        family = binomial, 
                        data = comm_regression_df)
 
@@ -107,7 +123,7 @@ pscore_df = data.frame(pr_score = predict(propensity_logit,type = "response"),
 # Look at propensity score distribution
 ```{r}
 ggplot(pscore_df,aes(x = pr_score))+
-  geom_histogram(color="white")+
+  geom_histogram(color="white",bins=15)+
   facet_wrap(~organic,scales="free")+
   theme_bw()
 ```
@@ -119,12 +135,14 @@ ggplot(pscore_df,aes(x = pr_score))+
 
 # matchit is the main command of the package MatchIt, which enables parametric models for causal inference to work better by selecting well-matched subsets of the original treated and control groups. MatchIt implements the suggestions of Ho, Imai, King, and Stuart (2004) for improving parametric statistical models by preprocessing data with nonparametric matching methods. MatchIt implements a wide range of sophisticated matching methods, making it possible to greatly reduce the dependence of causal inferences on hard-to-justify, but commonly made, statistical modeling assumptions. The software also easily fits into existing research practices since, after preprocessing with MatchIt, researchers can use whatever parametric model they would have used without MatchIt, but produce inferences with substantially more robustness and less sensitivity to modeling assumptions. 
 
-match = matchit(organic ~ croptype + soil_q + hectars, 
+match = matchit(organic ~ croptype + soil_q, 
                 method = "nearest", 
-                data = comm_regression_df)
+                data = comm_regression_df,
+                reestimate = T,
+                discard = "control")
 
-summary(match)
-# plot(match)
+# summary(match)
+plot(match)
 
 # match.data outputs matched data sets from matchit()
 matches <- match.data(match)
@@ -135,7 +153,7 @@ dim(matches)
 Look at difference in means between matches to see if they're closer than in the original data set. 
 - Differences should not be significant AKA fail to reject the null
 ```{r check_matches}
-cov <- c('hectars', 'soil_q') # Covariates to check matches with
+cov <- c( 'soil_q') # Covariates to check matches with
 
 matches %>%
   group_by(organic) %>% # Seperate the two CDFA groups (1 = ORGANIC, 0 = CONVENTIONAL)

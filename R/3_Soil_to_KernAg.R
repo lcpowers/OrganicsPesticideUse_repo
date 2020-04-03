@@ -9,7 +9,7 @@ Soil_to_KernAg_fun = function(year){
   
   ## Change into simple features dataframe
   ag_sf = st_as_sf(ag) %>% 
-    filter(P_STATUS == "A") # Keep active permits
+    filter(P_STATUS == "A" & !str_detect(COMM,"UNCULTIVATED")) # Keep active permits
   
   ## Extract values from soil raster that correspond to each polygon in the ag shapefile
   r.vals = raster::extract(soil_ras, # Storie Index Raster Values

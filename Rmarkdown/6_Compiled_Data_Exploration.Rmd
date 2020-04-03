@@ -24,7 +24,7 @@ library(tidyverse)
 library(rgdal)
 library(sf)
 
-setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown/")
+setwd("~/Desktop/Organics_Final/Working/organics_repo/Rmarkdown/")
 
 # CDFA Organics
 cdfa_orgs = readOGR("../R_output/spatial/final_organics_data/cdfa_organics.shp") %>% 
@@ -38,17 +38,22 @@ sum(cdfa_orgs$apn_mtc)
 
 # CDFA and Kern Ag Organics
 cdfa_kern_orgs = cdfa_orgs 
+cdfa_kern_orgs$permtst <- as.factor(cdfa_kern_orgs$permtst)
 cdfa_kern_orgs$organic = ifelse(cdfa_kern_orgs$apn_mtc==1|cdfa_kern_orgs$trs_mtc==1|str_detect(cdfa_kern_orgs$comm,"ORGANIC"),1,0)  
+
+# Number of organic observations with APN, TRS, and Kern Ag Commodity with "-ORGANIC"
+sum(cdfa_kern_orgs$organic)
+# 741 with only str_detect 1 permtst org
+# 750 with str_detect 1 and 2
+# 764 with all 3 str detect
+
 
 # WRite this output file for later use
 writeOGR(as(cdfa_kern_orgs,"Spatial"),
          dsn = "../R_output/spatial/final_organics_data/",
          layer = "cdfa_with_KernAg_organics",
-         driver = "ESRI Shapefile")
-
-# Number of organic observations with APN, TRS, and Kern Ag Commodity with "-ORGANIC"
-sum(cdfa_kern_orgs$organic)
-# 741
+         driver = "ESRI Shapefile",
+         overwrite_layer = T)
 
 ```
 
