@@ -1,6 +1,8 @@
 
 Soil_to_KernAg_fun = function(year){
 
+  timestamp()
+  
   ### Read in raw Kern County Agriculture shapefile ###
   ag_raw = readOGR(paste0("../R_input/spatial/kern_AG_shp/kern",year,"/kern",year,".shp"))
   
@@ -11,23 +13,16 @@ Soil_to_KernAg_fun = function(year){
   ag_sf = st_as_sf(ag) %>% 
     filter(P_STATUS == "A" & !str_detect(COMM,"UNCULTIVATED")) # Keep active permits
   
-  ### Read in agroclass csv and join to ag_sf ###
-  agro_class <- read_csv("../R_input/CSV/comm_subgroups.csv")
-  colnames(agro_class) <- c("COMM","COMM_EDIT","COMM_CODEOLD","COMM_CODE","GENUS","AGROCLASS","FAMILY")
+  ag_sf$COMM <- as.character(ag_sf$COMM)
+  # ag_sf$COMM_CODE<- as.character(ag_sf$COMM_CODE)
   
- agro_class$COMM <- as.character(agro_class$COMM)
- agro_class$COMM_CODE<- as.character(agro_class$COMM_CODE)
- 
- ag_sf$COMM <- as.character(ag_sf$COMM)
- ag_sf$COMM_CODE<- as.character(ag_sf$COMM_CODE)
+  ag_merge <- left_join(ag_sf,agro_class, 
+                    by = c("COMM"))
   
- ag_merge <- left_join(ag_sf,agro_class, 
-                    by = c("COMM","COMM_CODE"))
-  
- ag_merge_check <- ag_merge %>% 
-   as.data.frame(.) %>% 
-   filter(is.na(FAMILY))
- 
+  # ag_merge_check <- ag_merge %>% 
+  #  as.data.frame(.) %>% 
+  #  filter(is.na(FAMILY))
+  # 
   ag_slct <- ag_merge %>% 
     dplyr::select(-c(COMM_EDIT,COMM_CODEOLD))
   
