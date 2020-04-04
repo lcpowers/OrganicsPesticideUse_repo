@@ -1,7 +1,7 @@
 
 Soil_to_KernAg_fun = function(year){
 
-  ## Read in raw Kern County Agriculture shapefile
+  ### Read in raw Kern County Agriculture shapefile ###
   ag_raw = readOGR(paste0("../R_input/spatial/kern_AG_shp/kern",year,"/kern",year,".shp"))
   
   ## Put into California Teale Albers
@@ -10,6 +10,26 @@ Soil_to_KernAg_fun = function(year){
   ## Change into simple features dataframe
   ag_sf = st_as_sf(ag) %>% 
     filter(P_STATUS == "A" & !str_detect(COMM,"UNCULTIVATED")) # Keep active permits
+  
+  ### Read in agroclass csv and join to ag_sf ###
+  agro_class <- read_csv("../R_input/CSV/comm_subgroups.csv")
+  colnames(agro_class) <- c("COMM","COMM_EDIT","COMM_CODEOLD","COMM_CODE","GENUS","AGROCLASS","FAMILY")
+  
+ agro_class$COMM <- as.character(agro_class$COMM)
+ agro_class$COMM_CODE<- as.character(agro_class$COMM_CODE)
+ 
+ ag_sf$COMM <- as.character(ag_sf$COMM)
+ ag_sf$COMM_CODE<- as.character(ag_sf$COMM_CODE)
+  
+ ag_merge <- left_join(ag_sf,agro_class, 
+                    by = c("COMM","COMM_CODE"))
+  
+ ag_merge_check <- ag_merge %>% 
+   as.data.frame(.) %>% 
+   filter(is.na(FAMILY))
+ 
+  ag_slct <- ag_merge %>% 
+    dplyr::select(-c(COMM_EDIT,COMM_CODEOLD))
   
   ## Extract values from soil raster that correspond to each polygon in the ag shapefile
   r.vals = raster::extract(soil_ras, # Storie Index Raster Values
@@ -22,10 +42,10 @@ Soil_to_KernAg_fun = function(year){
                            df = TRUE) # Return results as a data.frame
   
   ## Add the mean values to the Kern Agriculture Shapefile
-  ag_sf$soil = r.vals$layer  
+  ag_slct$soil = r.vals$layer  
   
   ## Convert back into Shapefile
-  ag_shp_withSoil = as(ag_sf, "Spatial")
+  ag_shp_withSoil = as(ag_slct, "Spatial")
   
   ## Write output shapefile
   writeOGR(obj = ag_shp_withSoil,
