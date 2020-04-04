@@ -33,8 +33,8 @@ library(tidyverse)
 library(reshape2)
 library(rgdal)
 
-# Set working directory to ensure relative file pathways are functional
-# setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown") 
+# Set working directory for For Claire's computer
+setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Bring in the function stored in the '1_APN_edit.R' script. If editing that function, 
 # check the box that says 'source on save' to upload that latest version of the function 
@@ -63,7 +63,8 @@ apn_params = list(id_cols = 2, # ID Column used to go from wide to long format
                   year = 2013) # Year being evaluated
 
 # Create output directories
-dir.create("../R_output/CSV/CDFA/final_APN/",recursive = T)
+# dir.create("../R_input/CSV/CDFA/final_APN/",recursive = T)
+# dir.create("../R_output/CSV/CDFA/final_APN/",recursive = T)
 
 # Use the APN_edit_fun() with the list of parameters for the 2013 APNs. 
 cdfa_2013_final_df = APN_edit_fun(cdfa_2013_raw, # 2013 CDFA Dataframe

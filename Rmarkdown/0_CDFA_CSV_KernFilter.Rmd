@@ -28,7 +28,7 @@ The data being read in with the read_csv() function is from the original CDFA da
 ```{r kern_filter_loop, message=FALSE, warning=FALSE}
 library(tidyverse)
 
-# Set working directory for For Claire's computer. The inner
+# Set working directory for For Claire's computer
 setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Specify years to be icluded in this filtering process

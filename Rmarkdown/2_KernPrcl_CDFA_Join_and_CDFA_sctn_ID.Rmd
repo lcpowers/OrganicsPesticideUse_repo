@@ -26,7 +26,8 @@ library(tidyverse) # For general data wrangling and operations on dataframes
 library(rgdal) # GDAL for R. 
 library(sf) # For simple features operations in R. Allows the attribute table of a shapefile to be converted to a dataframe structure while maintaining the geometry for easy data view and operations. 
 
-setwd("~/Desktop/Organics_Final/Working/organics_repo/Rmarkdown/")
+# Set working directory for For Claire's computer
+setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Bring in function stored in the '3_KernCountyParcel_CDFA_join.R' script. If editing that 
 # function, check the box that says 'source on save' to upload that latest version of the 
@@ -42,8 +43,8 @@ KernCoParcels <- readOGR("../R_input/spatial/Kern_Parcels_2017_Final/Kern_Parcel
 #### 2. Apply function that joins CDFA data to Kern County Parcel data on the APN field specified years: 2013 - 2017. 
 ```{r apply_function}
 
-# Specify years for function to be applied to
-yrs = 2017
+# Specify years 
+yrs = 2013:2017
 
 # Create output directory
 dir.create("../R_output/spatial/CDFA_APN_parcels/", recursive = T)
@@ -59,21 +60,30 @@ for(i in yrs){
 
 ```
 
-# Dealing with Grimmway/Crystal Organics
+#### 3. Identify PLSS Sections that contain organic parcels (the next phase of this, finding WHICH parcels are organic, is in RMD 4)
 
 ## 1) Read in Kern County Parcels that matched to CDFA records based on the APN
 ```{r cdfa_apn_match}
 
-### Kern County Parcels that matched with CDFA APNs
-cdfa_APN_parcels_2017 = readOGR("../R_output/spatial/CDFA_APN_parcels/2017/CDFA_Parcels_2017.shp") %>% 
-  st_as_sf()
+# Specify years for function to be applied to
+yrs = 2013:2017
 
-## 357 organic parcels match to CDFA APNsin 2017
+### Kern County Parcels that matched with CDFA APNs
+for(i in yrs){
+  
+  tmp = readOGR(paste0("../R_output/spatial/CDFA_APN_parcels/",i,"/cdfa_parcels_",i,".shp")) %>% 
+    st_as_sf()
+  
+  assign(paste0("cdfa_parcels_",i),tmp)
+  
+  rm(tmp)
+  
+  }
 
 ```
 
-## 2) Locate parcels in CDFA data that match to Kern County Parcels on TRS codes
-```{r trs_matches}
+## 2) Bring in Kern Sections shapefile
+```{r PLSS_shapefile}
 
 # Bring in Kern Sections shapefile
 kern_sections = readOGR("../R_input/spatial/Kern_sections/Kern_15r.shp")%>% 
@@ -86,44 +96,59 @@ kern_sections_slct = kern_sections %>%
 
 # Create TRS column by trimming "m' off the beginning of the MTRS column values
 kern_sections_slct$trs <- str_sub(kern_sections_slct$MTRS,2,9)
+```
 
-# Read in CDFA data with the TRS codes pulled from the APN column
-cdfa_df = read_csv("../R_input/CSV/CDFA/excel_edited/Kern_CDFA_TRS_2017.csv") 
-cdfa_trs = cdfa_df %>% 
-  dplyr::select("Company","T","R","S") %>% 
-  filter(!is.na(T))
+## 3) Read in CDFA PLSS csv, join to PLSS shapefile and write output shapefile
+```{r CDFA_trs}
+
+yrs = 2013:2017
+
+dir.create("../R_output/spatial/CDFA_PLSS_sections/")
+
+for(i in yrs){
   
-# 317 Rows after filtering out NAs
+  # Read in CDFA data with the TRS codes pulled from the APN column
+  cdfa_trs_df = read_csv(paste0("../R_input/CSV/CDFA/excel_edited_PLSS/cdfa_trs_",i,".csv")) %>% 
+    dplyr::select("Company","t","r","s") %>% 
+    filter(!is.na(t)|!is.na(r)|!is.na(s)) %>% 
+    mutate(trs = paste0(t,r,s))
+  
+  # Get a count of how many times each TRS is repeated and how many unique codes there are
+  cdfa_trs_summary = cdfa_trs_df %>%
+    group_by(Company,trs) %>%
+    summarise(count = n())
+  
+  print(i)
+  print(table(cdfa_trs_summary$Company))
+  
+  # Merge CDFA to PLSS sections on the TRS columns created above
+  cdfa_sections = merge(kern_sections_slct,cdfa_trs_df,by = "trs")
+  
+  # The merge produces some duplicate matches. This gets rid of them, then cleans up the data.frame and turns it back into a Spatial Polygons file
+  cdfa_sections_unique = distinct(cdfa_sections,.keep_all = T) %>% 
+    dplyr::select(trs,company = "Company",geometry) %>% 
+    as(.,"Spatial")
 
-# Create a TRS column
-cdfa_trs$trs = paste0(cdfa_trs$T,cdfa_trs$R,cdfa_trs$S)
-
-# # Get a count of how many times each TRS is repeated and how many unique codes there are
-# cdfa_trs_duplicates = data.frame(trs = as.factor(cdfa_trs$trs)) %>% 
-#   group_by(trs) %>% 
-#   summarise(count = n())
-# # There are 105 unique TRS codes
-
-# Merge CDFA to PLSS sections on the TRS columns created above
-cdfa_sections = merge(kern_sections_slct,cdfa_trs,by = "trs")
-
-# The above operation produces 302 sections, but there are only 106 unique TRS codes. This must mean some duplicates are produced here. We only need to maintain the company name here, to check when we join this to kern ag data.
-
-cdfa_sections_unique = distinct(cdfa_sections,.keep_all = T) %>% 
-  dplyr::select(trs,company = "Company",geometry) %>% 
-  as(.,"Spatial")
-
-# This produces 91 distinct sections. Check visually
-
-# Now I need to merge/intersect this with Kern Ag Data and filter that for any parcel that has organic in the name, then merge that with the cdfa_APN data
-
-dir.create("../R_output/spatial/CDFAtrs_sections/")
-
-writeOGR(cdfa_sections_unique,
-         dsn = "../R_output/spatial/CDFAtrs_sections/",
-         layer = "cdfa_sections",
-         driver = "ESRI Shapefile",
-         overwrite = T)
+  
+  
+  writeOGR(cdfa_sections_unique,
+           dsn = paste0("../R_output/spatial/CDFA_PLSS_sections/",i,"/"),
+           layer = paste0("cdfa_sections_",i),
+           driver = "ESRI Shapefile",
+           overwrite = T)
+  
+  # Remove CDFA dataframes to make sure there isn't crossover between years
+  
+  rm(cdfa_sections)
+  rm(cdfa_sections_unique)
+  rm(cdfa_trs_summary)
+  rm(cdfa_trs_df)
+  
+}
 
 ```
+
+
+
+
 
