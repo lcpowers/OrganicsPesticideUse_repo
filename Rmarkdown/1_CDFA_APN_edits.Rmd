@@ -13,13 +13,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 **Notes:**   
 
-  * APNs are self-reported by farmers to the CDFA, and so exist in a wide variety of formats in the CDFA database *so*,
+  * APNs are self-reported by farmers to the CDFA, and exist in a wide variety of formats in the CDFA database *so*,
   * Before reading CSVs into this Rmd document, the APN entry format was edited in Excel:
-      * Each individual entry was seperated into it's own column (i.e. if two entries were entered into the same cell, they were seperated, maintain the same row but ending up in individual columns)
+      * Each individual entry was seperated into their own columns (i.e. if two entries were entered into the same cell, they were seperated, maintaining the same row but ending up in individual columns, so that each cell contained no more than one entry)
       * If APN #s didn't have dashes, a dash was added between the 3 and 4 digit and between the 6 and 7 digit. 
+      
   * This code uses a function stored in the "1_APN_edit.R" file to edited APNs. The function takes the original APN values and puts them into a '123-456-78' format to match the format of those in the Kern County Parcel shapefile attribute table
   * APN edit methods were evaluated on the number of matches made between CDFA APNs and Kern County Parcel data, and the accuracy of those matches based on comparison of the Permittee and Company columns, respectively. This comparison can be seen in the table FILL IN THE BLANK
-  * In some instances, the Permittee and Company columns did not match. Further research showed that this was often the result of a parent companies owning smaller companies i.e. Parent company Grimmway Farms which owns Crystal Organics, based on records available on the internet <https://www.scscertified.com/fff/viewsupplier.php?id=776>;<https://www.growingproduce.com/vegetables/grower-experienced-in-biocontrols-says-be-patient/>. 
+  * In some instances, the Permittee and Company columns did not match. Further research showed that this was often the result of parent companies owning smaller companies i.e. Parent company Grimmway Farms which owns Crystal Organics, based on records available on the internet <https://www.scscertified.com/fff/viewsupplier.php?id=776>;<https://www.growingproduce.com/vegetables/grower-experienced-in-biocontrols-says-be-patient/>. 
 
 **Output:**
 
@@ -41,6 +42,8 @@ library(rgdal)
 source("../R/1_APN_edit.R") 
 ```
 
+## Apply function to years 2013 to 2017. It was ultimately a little easier to manually work through each year than to apply a for-loop because the column indexes (apn_cols) were different for each year. 
+
 #### 2013
 ```{r yr2013, message=FALSE}
 
@@ -50,7 +53,7 @@ source("../R/1_APN_edit.R")
 # columns, (2) dashes added to those numbers that didn't have them. If dashes were added I 
 # always started counting from the left and added a dash after the 3rd number and after the 
 # 6th number. Original versions of the APNs were kept for comparison
-cdfa_2013_raw = read_csv("../R_input/CSV/CDFA/excel_edited/CDFA_excelAPNs_2013.csv")
+cdfa_2013_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2013.csv")
 
 # Define parameters for APN_edit function in a list of elements. These also could be defined 
 # directly in the function arguments below. 
@@ -69,6 +72,7 @@ cdfa_2013_final_df = APN_edit_fun(cdfa_2013_raw, # 2013 CDFA Dataframe
                                   col_names = apn_params$col_names, 
                                   year = apn_params$year)
 
+rm(apn_params)
 # The warning message refers to empty cells that results when APNs are separated by '-' into 
 # multiple columns. Those that have fewer than the maximum number of dahes recieve NAs in 
 # those columns. The warning is not problematic and does not effect those APN values. 
@@ -78,10 +82,10 @@ All subsequent years follow the same order of operations as those explained in t
 
 #### 2014
 ```{r yr2014, message=FALSE}
-cdfa_2014_raw = read_csv("../R_input/CSV/CDFA/excel_edited/CDFA_excelAPNs_2014.csv")
+cdfa_2014_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2014.csv")
 
 apn_params = list(id_cols = 2,
-                  apn_cols = 22:75, 
+                  apn_cols = 21:74, 
                   col_names = c("company","APN_index","original_apn"),
                   year = 2014)
 
@@ -90,14 +94,15 @@ cdfa_2014_final_df = APN_edit_fun(cdfa_2014_raw,
                                   apn_cols = apn_params$apn_cols, 
                                   col_names = apn_params$col_names, 
                                   year = apn_params$year)
+rm(apn_params)
 ```
 
 #### 2015
 ```{r yr2015}
-cdfa_2015_raw = read_csv("../R_input/CSV/CDFA/excel_edited/CDFA_excelAPNs_2015.csv")
+cdfa_2015_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2015.csv")
 
 apn_params = list(id_cols = 2, 
-                  apn_cols = 22:75, 
+                  apn_cols = 21:74, 
                   col_names = c("company","APN_index","original_apn"),
                   year = 2015)
 
@@ -106,14 +111,15 @@ cdfa_2015_final = APN_edit_fun(cdfa_2015_raw,
                                apn_cols = apn_params$apn_cols, 
                                col_names = apn_params$col_names, 
                                year = apn_params$year)
+rm(apn_params)
 ```
 
 #### 2016
 ```{r yr2016, message=FALSE}
-cdfa_2016_raw = read_csv("../R_input/CSV/CDFA/excel_edited/CDFA_excelAPNs_2016.csv")
+cdfa_2016_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2016.csv")
 
 apn_params = list(id_cols = 2, 
-                  apn_cols = 22:75, 
+                  apn_cols = 21:74, 
                   col_names = c("company","APN_index","original_apn"),
                   year = 2016)
 
@@ -122,11 +128,12 @@ cdfa_2016_final_df = APN_edit_fun(cdfa_2016_raw,
                                   apn_cols = apn_params$apn_cols, 
                                   col_names = apn_params$col_names, 
                                   year = apn_params$year)
+rm(apn_params)
 ```
 
 #### 2017
 ```{r yr2017, message=FALSE}
-cdfa_2017_raw = read_csv("../R_input/CSV/CDFA/excel_edited/CDFA_excelAPNs_2017.csv")
+cdfa_2017_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2017.csv")
 
 apn_params = list(id_cols = 2, 
                   apn_cols = 21:74, 
@@ -138,6 +145,6 @@ cdfa_2017_final_df = APN_edit_fun(cdfa_2017_raw,
                                   apn_cols = apn_params$apn_cols, 
                                   col_names = apn_params$col_names, 
                                   year = apn_params$year)
-
+rm(apn_params)
 ```
 
