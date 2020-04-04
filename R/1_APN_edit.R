@@ -6,6 +6,8 @@ APN_edit_fun = function(input_df,id_cols,apn_cols,col_names,year){
   # end up with 
   melt_df = melt(input_df, id.vars = id_cols, measure.vars = apn_cols, na.rm = TRUE)
   
+  print(nrow(melt_df))
+  
   # Column names
   colnames(melt_df) = col_names
 
@@ -43,8 +45,8 @@ APN_edit_fun = function(input_df,id_cols,apn_cols,col_names,year){
   output_df$cdfa <- rep(1,nrow(output_df))
   
   # Write output CSVs into both the Rinput and Routput folders for convenience. 
-  write_csv(output_df,paste0("../R_output/CSV/CDFA/final_APN/CDFA_APNs_",year,".csv"))
-  write_csv(output_df,paste0("../R_input/CSV/CDFA/final/CDFA_APNs_",year,".csv"))
+  write_csv(output_df,paste0("../R_output/CSV/CDFA/final_APN/CDFA_APNs_",year,".csv"), append = F)
+  write_csv(output_df,paste0("../R_input/CSV/CDFA/final_APN/CDFA_APNs_",year,".csv"), append = F)
   
   # Return a dataframe of results in the Rmarkdown document 
   return(output_df)
