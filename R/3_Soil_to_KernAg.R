@@ -11,7 +11,9 @@ Soil_to_KernAg_fun = function(year){
   
   ## Change into simple features dataframe
   ag_sf = st_as_sf(ag) %>% 
-    filter(P_STATUS == "A" & !str_detect(COMM,"UNCULTIVATED")) # Keep active permits
+    filter(P_STATUS == "A" & !str_detect(COMM,"UNCULTIVATED")) %>%  # Keep active permits
+    mutate(AG_TRS = paste0(TOWNSHIP,RANGE,str_pad(SECTION,2,pad="0",side=c("left")))) %>% 
+    dplyr::select(PERMITTEE,PMT_SITE,COMM,S_STATUS,ACRES,AG_TRS) 
   
   ag_sf$COMM <- as.character(ag_sf$COMM)
   # ag_sf$COMM_CODE<- as.character(ag_sf$COMM_CODE)
