@@ -31,12 +31,15 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
                   PMT_SITE,
                   S_STATUS,
                   PERMITTEE,
-                  "COMPANY" = company
-                  ,COMM,
+                  "COMPANY" = company,
+                  COMM,
+                  "COMM_GROUP" = SYMBOL,
+                  "GENUS",
+                  "AGROCLASS",
+                  "FAMILY",
                   "CDFA"=cdfa,
                   ACRES,
-                  "SOILQ" = soil,
-                  "COMM_GROUP" = SYMBOL)
+                  "SOILQ" = soil)
   
   # Separate the COMM column by '-' into COMM_x and COMM_y
   output = join %>%
@@ -52,13 +55,7 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
 
   # If the word 'ORGANIC' is in the COMM_y column, keep only the COMM_x column,
   # otherwise keep the original value in the COMM column
-  output$COMM_new <- ifelse(output$COMM_y == "ORGANIC"|is.na(output$COMM_y), output$COMM_x,output$COMM)
-
-  # Combine all lettuce categories into one
-  output$COMM_new <- ifelse(str_detect(output$COMM_new,"LETTUCE"),"LETTUCE",output$COMM_new)
-
-  # Combine fruit
-  output$COMM_GROUP <- ifelse(str_detect(output$COMM_GROUP,"FRUIT"),"FRUIT",as.character(output$COMM_GROUP))
+  output$COMM_new <- ifelse(output$COMM_y == "ORGANIC"|output$COMM_y=="ORGA"|is.na(output$COMM_y),output$COMM_x,output$COMM)
   
   # Remove the COMM_x and COMM_y columns
   output = output %>%
@@ -72,12 +69,11 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   
   all_shp <- as(output,"Spatial")
   
-  if(write_all_shp)
-    {writeOGR(all_shp,
-           paste0("../R_output/spatial/CDFA_KernAg_join/",year,"/buffer",buf_width),
-           paste0("KernAg_CDFA_all_",year,"_B",buf_width),
-           driver = "ESRI Shapefile",
-           overwrite_layer = TRUE)}
+  if(write_all_shp){writeOGR(all_shp,
+                       paste0("../R_output/spatial/CDFA_KernAg_join/",year,"/buffer",buf_width),
+                       paste0("KernAg_CDFA_all_",year,"_B",buf_width),
+                       driver = "ESRI Shapefile",
+                       overwrite_layer = TRUE)}
   
   ### Select rows with CDFA matches
   cdfa_sf = join %>% 
@@ -99,6 +95,5 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
            overwrite_layer = TRUE)}
 
 }
-
 
 
