@@ -1,15 +1,20 @@
 ---
 title: "Kern County Agriculture -- CDFA parcel spatial join"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-**The purpose of this Rmarkdown file is to join CDFA organic parcels (CDFA data matched to Kern County parcels on APN or TRS codes) to Kern County Agriculture parcels.**
+**The primary purpose of this Rmarkdown file is to identify organic ag fields using 3 approaches:**
+
+1. Spatial join between CDFA APN-idetified parcels (from RMD 2) and Kern Ag parcels
+2. Spatial join between CDFA PLSS sections (identied by TRS codes in CDFA csv in RMD 2) and Kern Ag parcels, then filter the "PERMITTEE" column of the joined Kern Ag parcels for "ORGANIC"
+3. Filtering for the word "ORGANIC" in the "COMM" column in the Kern Ag data attribute table.
+     
 
 **Notes:**
 
@@ -20,7 +25,6 @@ knitr::opts_chunk$set(echo = TRUE)
        * Year (year)
        * Buffer width (buf_width)
        * Two true/false argument for function output
-
 
 **Output:**
 
@@ -33,7 +37,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ---
 
 
-#### 1. Load packages, set working diretory, and source KernAg_CDFA_join.R file with contains a function that does a spatial join between the two data.sets
+#### 1. Load packages, set working diretory, and source function in the KernAg_CDFA_join.R file 
 ```{r packages_and_function}
 library(tidyverse) # General data organization
 library(rgdal) # Gdal for R
@@ -41,17 +45,18 @@ library(rgeos) # need this for gBuffer
 library(sf) # Specific operations on different versions of shapefiles in R
 library(raster)
 
-setwd("~/Desktop/Organics_Final/Working/organics_repo/Rmarkdown")
+# Set working directory for For Claire's computer
+setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Access function in .R document used to join Kern Agriculture and CDFA parcel shapefiles. 
 # See the .R file for more information about the function
 source("../R/4_KernAg_CDFA_Join.R")
 ```
 
-#### 2. Implement the function that performs a spatial join between APN-matched CDFA parcels and Kern Agriculture parcels for specific years and desired buffer width. See notes in the following code chunk for more information about buffer widths and how 50m was determined
+#### 2. Implement the function that performs a spatial join between APN-identified CDFA parcels and Kern Agriculture parcels for specific years and desired buffer width. See notes in the following code chunk for more information about buffer widths and how 50m was determined
 ```{r implement_function, message=FALSE, warning=FALSE}
 # Years of interest
-years = 2017
+years = 2013:2017
 
 # Buffer widths: In the function these are negative and reduce the CDFA field size. 
 # A larger buffer results in a more conservative spatial join between the CDFA parcels and 
@@ -74,7 +79,7 @@ for(i in years){
   
     # Create output directory for the output CSV file that lists the CDFA data 
     # with commodities from Kern Ag data attached
-    dir.create(paste0("../R_output/CSV/CDFA_KernAg_join/",i),
+    dir.create(paste0("../R_output/CSV/cdfa_kernAg_join/",i),
                recursive = TRUE)
     
     # Create the output directory for the full CDFA_KernAg_join shapefile, no filters applied. 
@@ -89,7 +94,6 @@ for(i in years){
 
 ```
 
-
 #### 3. Perform spatial join between CDFA TRS-matched sections and Kern Agriculture Parcels -- Extract Ag parcels that overlap with CDFA sections AND contain the word 'organic' in the company name. 
 ```{r trs_ag_join}
 
@@ -98,32 +102,31 @@ kernAg_cdfa_APN <- readOGR("../R_output/spatial/CDFA_KernAg_join/2017/buffer50/K
   st_as_sf()
 
 # Read in Kern Ag with Soil info shapefile
-kernAg <- readOGR("../R_output/spatial/KernAg_withSoil/2017/KernAg_withSoil_2017.shp") %>% 
+kernAg <- readOGR("../R_output/spatial/KernAg_withSoil/2017/KernAg_withSoil_2017.shp") %>%
   st_as_sf()
 
 # Get rid of unnecessary Kern ag columns
-kernAg_select = kernAg %>% 
-  dplyr::select(PERMIT,SITEID,S_STATUS,COMM,PMT_SITE,PERMITTEE,ACRES,soil)
+kernAg_select = kernAg %>%
+  dplyr::select(PMT_SITE,S_STATUS,COMM,PERMITTEE)
 
 # Read in shaepfile of the PLSS Sections that joined to CDFA data on TRS codes. 
 # Two producers used TRS codes instead of APNs, which is where TRS was pulled from 
 cdfa_sections <- readOGR("../R_output/spatial/CDFAtrs_sections/cdfa_sections.shp") %>% 
   st_as_sf() %>% 
-  mutate(TRS_match = 1)
+  mutate(trs_match = 1)
 
-# Spatial join between kern ag parcels and cdfa sections, maintain the shape of the kern ag polygons
+# Spatial join between kern ag parcels and cdfa sections. Maintain the shape of the kern ag polygons
 kernAg_sections_join <- st_join(kernAg_select,cdfa_sections,largest=T)
 
 # Filter above spatial join ouput for the parcels that: (1) Matched a PLSS Section TRS code with CDFA TRS code (2) Succesfully joined to an Ag parcel and (3) contained the word "ORGANIC" in the Permittee column
 
 kernAg_cdfa_TRS = st_as_sf(kernAg_sections_join) %>% # Convert into a simple features DF
-  filter(str_detect(PERMITTEE,"ORGANIC") & !is.na(trs)) %>% # Filter for the word 'Organic' in the permittee column
+  filter(str_detect(PERMITTEE,"ORGANIC") & trs_match == 1) %>% # Filter for the word 'Organic' in the permittee column
   dplyr::select("permittee" = PERMITTEE,
                company,
-               "trs_match" = TRS_match)
+               "trs_match" = trs_match)
 
-
-## 298
+## 753
 
 # Join TRS section data to Kern Ag/CDFA_APN data. 
 cdfa_APNtoTRS_join <- st_join(kernAg_cdfa_APN,
@@ -140,19 +143,26 @@ APNtoTRS_joinFinal <- APNtoTRS_joinFilter %>%
   dplyr::select("permitsite" = PMT_SITE,
          "s_status" = S_STATUS,
          "permittee" = PERMITTEE,
-         "comm_grp"=COMM_GROUP,
          "comm" = COMM,
+         "agroclass" = AGROCLASS,
+         "comm_grp"=COMM_GROUP,
+         "genus" = GENUS,
+         "family" = FAMILY,
          "comm_edit"=COMM_new,
          "acres"=ACRES,
          "soil_q"=SOILQ,
-         "apn_match"=CDFA,
-         trs_match)
+         "apn"=CDFA,
+         "trs" = trs_match)
 
 # Replace NAs with 0s in the trs_match column
-APNtoTRS_joinFinal$trs_match <- ifelse(is.na(APNtoTRS_joinFinal$trs_match),0,APNtoTRS_joinFinal$trs_match)
+APNtoTRS_joinFinal$trs[is.na(APNtoTRS_joinFinal$trs)] = 0
 
 # Create a binary organic column based on the apn_match and trs_match columns. If either of those indicates that the parcel is organic then the value in the binary organic column == 1.
-APNtoTRS_joinFinal$organic <- ifelse(APNtoTRS_joinFinal $apn_match==1|APNtoTRS_joinFinal$trs_match==1,1,0)
+APNtoTRS_joinFinal$cdfa_organic <- ifelse(APNtoTRS_joinFinal$apn==1|APNtoTRS_joinFinal$trs==1, # If APN or TRS organic
+                                     1, # put a 1 in the cdfa_organic column
+                                     0) # otherwise put a 0
+
+sum(APNtoTRS_joinFinal$cdfa_organic)
 
 # Write Output File
 writeOGR(obj = as(APNtoTRS_joinFinal,"Spatial"),
@@ -162,4 +172,35 @@ writeOGR(obj = as(APNtoTRS_joinFinal,"Spatial"),
          overwrite_layer = T)
 
 ```
+
+4. Identify organic fields based on Kern Ag "COMM" column
+```{r COMM_organics}
+
+all_organics = APNtoTRS_joinFinal # Start what will become a final organics simple.features data frame and ultimately out shapefile
+
+all_organics$comm_org <- 0
+all_organics$comm_org <- ifelse(str_detect(all_organics$comm,"ORGANIC"),1,0)
+sum(all_organics$comm_org)
+
+all_organics$all_organic = 0
+all_organics$all_organic = ifelse(all_organics$comm_org==1|all_organics$trs==1|all_organics$apn==1,1,0)
+sum(all_organics$all_organic)
+
+# Write Output File
+writeOGR(obj = as(all_organics,"Spatial"),
+         dsn = "../R_output/spatial/CDFA_KernAg_join/2017/buffer50/",
+         layer = "all_organics",
+         driver = "ESRI Shapefile",
+         overwrite_layer = T)
+
+writeOGR(obj = as(all_organics,"Spatial"),
+         dsn = "../R_output/spatial/final_organics_data/",
+         layer = "all_organics",
+         driver = "ESRI Shapefile",
+         overwrite_layer = T)
+```
+
+
+
+
 

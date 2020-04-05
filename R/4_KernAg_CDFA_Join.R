@@ -11,7 +11,7 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   kern_ag_sf = st_as_sf(kern_ag_shp)
   
   ### Load CDFA parcel shapefile
-  cdfa_prcl_shp = readOGR(paste0("../R_output/spatial/CDFA_APN_parcels/",year,"/CDFA_Parcels_",year,".shp"))
+  cdfa_prcl_shp = readOGR(paste0("../R_output/spatial/CDFA_APN_parcels/",year,"/cdfa_parcels_",year,".shp"))
   
   ### Create a buffer around each polygon
   cdfa_prcl_buffer = gBuffer(cdfa_prcl_shp, width = -buf_width, byid = TRUE)
@@ -26,14 +26,11 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   
   ####### Write data before filtering for parcels desginted as organic by CDFA APN match #######
   join = join %>% 
-    dplyr::select(PERMIT,
-                  SITEID,
-                  PMT_SITE,
+    dplyr::select(PMT_SITE,
                   S_STATUS,
                   PERMITTEE,
                   "COMPANY" = company,
                   COMM,
-                  "COMM_GROUP" = SYMBOL,
                   "GENUS",
                   "AGROCLASS",
                   "FAMILY",
@@ -55,7 +52,7 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
 
   # If the word 'ORGANIC' is in the COMM_y column, keep only the COMM_x column,
   # otherwise keep the original value in the COMM column
-  output$COMM_new <- ifelse(output$COMM_y == "ORGANIC"|output$COMM_y=="ORGA"|is.na(output$COMM_y),output$COMM_x,output$COMM)
+  output$COMM_new <- ifelse(output$COMM_y == "ORGANIC"|is.na(output$COMM_y),output$COMM_x,output$COMM)
   
   # Remove the COMM_x and COMM_y columns
   output = output %>%
@@ -63,6 +60,8 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
 
   # Replace NAs in the CDFA column with 0s
   output$CDFA = ifelse(is.na(output$CDFA),0,1)
+  
+  assign(paste0("cdfa_kernag_",year),output,envir = .GlobalEnv)
   
   write_csv(output,
             paste0("../R_output/CSV/CDFA_KernAg_join/CDFA_KernAg_all",year,".csv"))
@@ -90,7 +89,7 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
  if(write_cdfa_shp)
    {writeOGR(cdfa_shp,
            paste0("../R_output/spatial/CDFA_KernAg_join/",year,"/buffer",buf_width),
-           paste0("APN_org_",year,"_B",buf_width),
+           paste0("KernAg_CDFA_apnOrgs_",year,"_B",buf_width),
            driver = "ESRI Shapefile",
            overwrite_layer = TRUE)}
 
