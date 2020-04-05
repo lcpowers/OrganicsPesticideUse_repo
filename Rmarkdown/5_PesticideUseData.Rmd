@@ -1,5 +1,5 @@
 ---
-title: "8 Join PesticideUseData to KernAg-CDFA shapefile"
+title: "Join PesticideUseData to Finazlied Organic Parcels Shapefile for all years"
 output:
   pdf_document: default
   html_document: default
@@ -31,7 +31,7 @@ library(tidyverse)
 library(rgdal)
 library(stringi)
 library(sf)
-setwd("~/Desktop/Organics_Final/Working/organics_repo/Rmarkdown/")
+setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Avoid scientific notation in dataframes
 options(scipen = 9999) 
@@ -40,7 +40,7 @@ options(scipen = 9999)
 pest_data_raw <- read_csv("../R_input/CSV/PesticideUse/KernOrgCollapse1317.csv")
 
 # Specify years of interest
-years = 2017
+years = 2013:2017
 
 # Specify buffer width being analyzed -- Buffer widths were originally implemented in the Kern Agriculture CDFA Parcel spatial join. 
 buf_width = c(50)
@@ -57,6 +57,7 @@ for(i in years){
   
   # Give it a name for that specific year
   assign(paste0("pest_data_",i),tmp)
+  
   }
 
 ```
@@ -70,11 +71,11 @@ for(i in years){ # For each year...
   for(j in buf_width){ # And each buffer width...
   
   # Read in the joined KernAg_CDFA data...
-  tmp <- readOGR(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer",j,"/TRSandAPN_organics.shp")) %>% 
+  tmp <- readOGR(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer",j,"/all_organics_",i,".shp")) %>% 
   st_as_sf()
 
   # Assign a name
-  assign(paste0("kern_ag_",i,"_B",j),tmp)
+  assign(paste0("organics_",i,"_B",j),tmp)
   
   remove(tmp)
     }
@@ -88,23 +89,24 @@ for(i in years){ # For each year...
 
 for(i in years){
   
-  # Find the data.frame that was previously read in that corresponds 
+  # Find the data.frame that was previously read in and corresponds 
   # to year.i and buffer_width.j
-  tmp_ag = eval(as.name(paste0("kern_ag_",i,"_B",j)))
+  tmp_ag = eval(as.name(paste0("organics_",i,"_B",j)))
   
   # Find the pesticide use data.frame that corresponds to pest_data_year.i
   tmp_pst = eval(as.name(paste0("pest_data_",i)))
   
   # Join the pesticide use data.frame to the 
   # Agriculture shapefile on 'permitsite' and keep only the rows that had mathches
-  join_pst = left_join(tmp_ag,tmp_pst)
+  join_pst = left_join(tmp_ag,tmp_pst, by = c("permtst" = "permitsite"))
   
   join_pst$year = i
   
-  join_pst[13:33][is.na(join_pst[13:33])] <- 0
+  join_pst[17:37][is.na(join_pst[17:37])] <- 0
+  join_pst$year <- i
   
   # Assign a unique name based on the year
-  assign(paste0("kernAg_CDFA_pest_",i), join_pst)
+  assign(paste0("organics_pest_",i), join_pst)
   
   # Remove the temporary data.frame to avoid errors
   remove(tmp_pst, tmp_ag)
@@ -115,112 +117,98 @@ for(i in years){
 #### 5. Determine the number of crops being grown on multi-crop fields (s_status == "M") and add information to the KernAg_CDFA_pesticideUse dataframe shapefile.
 ```{r deal_with_Mfields}
 
-# Turn the 2017 kernAg_CDFA_pest shapefile into a simple features (spatial) data.frame
-multicrop_df = st_as_sf(kernAg_CDFA_pest_2017) %>% 
-  # Turn into basic data.frame to remove spatial references
-  as.data.frame() %>% 
-  # Select columns relevant to dealing with M fields
-  dplyr::select(permitsite,s_status)
-
-# Convert 'permitsite' column to character
-multicrop_df$permitsite = as.character(multicrop_df$permitsite) 
-
-# Create a new column of permitsites with the last character trimmed from each 
-# 'permitsite' string that correspond to a field with an "M" in the "S_STATUS" column.
-
-# For rows with "M" in column "S_STATUS"
-multicrop_df$permitsite_trim1 = ifelse(multicrop_df$s_status == "M", 
-        
-   # Trim the last character off the 'permitsite' string
-   strtrim(multicrop_df$permitsite,width=nchar(multicrop_df$permitsite)-1),
-
-   # Leave other rows alone
-   multicrop_df$permitsite)
-
-# Create another new column from the original "permitsite" field with only the last character 
-# from the string. This is used to double check the seperation of characters in the step above. If concatenated,
-# '_trim1' + '_trim2' should be identical to the original 'permitsite' string.  
-
-# If the value in 'S_STATUS' == M
-multicrop_df$permitsite_trim2 = ifelse(multicrop_df$s_status == "M",
-                             
-   # Grab the last character in the 'permitsite' string
-   substr(x = multicrop_df$permitsite,
-   start = nchar(multicrop_df$permitsite),
-   stop = nchar(multicrop_df$permitsite)), 
-
-   # Otherwise make equal to NA
-   NA)
-
-# Create a new dataframe that has each unique 'permitsite' string in the first column
-# and the number of times it is repeated in the second column. Multi-crop fields (S_STATUS == M) 
-# are consistently distinguised from one another by a unique character at the end (right side) 
-# of an otherwise identical 'permitsite' string. With the last character trimmed off of those strings, 
-# we can determine the number of crops in the multi-crop fields based on the number of duplicate
-# permitsites in the 'permitsite_trim1' column.
-prmtst_dups = as.data.frame(table(multicrop_df$permitsite_trim1))
-
-# Rename columns from generic names given by table() function
-colnames(prmtst_dups) = c('permitsite','n')
-
-# Change 'permitsite' column from factor to character
-prmtst_dups$permitsite = as.character(prmtst_dups$permitsite)
-
-# Merge multicrop_df data.frame (with permitsite_trim columns) and prmtst_dups data.frame. This merge 
-# allows us to see how many crops are associated with each permitsite i.e. how many 
-# crops are in each individual field. 
-multicrop_df_final = merge(multicrop_df, 
-                           prmtst_dups, 
-                           by.x="permitsite_trim1", 
-                           by.y="permitsite", 
-                           type = "right") %>% 
-  dplyr::select(permitsite,n)
-
-# Rename columns for merge and later use
-colnames(multicrop_df_final) = c("permitsite","N_crops_prmtst")
-
-# Merge the final multicrop_df dataframe into the kernAg_CDFA_pest_2017 simple features data.frame
-kernAg_CDFA_pest_2017 = merge(kernAg_CDFA_pest_2017, multicrop_df_final, by = 'permitsite')
-kernAg_CDFA_pest_2017$acres = as.numeric(as.character(kernAg_CDFA_pest_2017$acres))
-kernAg_CDFA_pest_2017$hectares = kernAg_CDFA_pest_2017$acres*0.405/kernAg_CDFA_pest_2017$N_crops_prmtst
-kernAg_CDFA_pest_2017$kgperhec = kernAg_CDFA_pest_2017$KgPestAI/kernAg_CDFA_pest_2017$hectares
-```
-
-
-#### 7. Write output shapefiles -- Kern Agriculture data with pesticide use data
-```{r write_output_files}
-# Set years to be evaluated
-years = 2017
-
-# Initiate for_loop
 for(i in years){
   
-  # Grab the data.frame with the KernAg_CDFA_pesticide data output from codechunk 5
-  tmp_pst = eval(as.name(paste0("kernAg_CDFA_pest_",i)))
+  tmp_orgs_df = eval(as.name(paste0("organics_pest_",i)))
+      
+  # Turn the 2017 kernAg_CDFA_pest shapefile into a simple features (spatial) data.frame
+      M_status_df = st_as_sf(tmp_orgs_df) %>% 
+        # Turn into basic data.frame to remove spatial references
+        as.data.frame() %>% 
+        # Select columns relevant to dealing with M fields
+        dplyr::select(permtst,s_stats)
   
-  # Turn it back into a shapefile
-  tmp_shp = as(tmp_pst,"Spatial")
-  
-  # # Create an output directory 
-  # dir.create(paste0("../R_output/spatial/KernAg_CDFA_pest/",i,"/B50"),
-  #              recursive = TRUE)
-  
-  # Write the shapefile in to the output directory
-  writeOGR(tmp_shp,
-           "../R_output/spatial/final_organics_data/",
-           "cdfa_organics",
-           driver = "ESRI Shapefile",
-           overwrite_layer = TRUE)
+      # Create a new column of permitsites with the last character trimmed from each 
+      # 'permitsite' string that correspond to a field with an "M" in the "S_STATUS" column.
 
-  # Remove the temporary files to avoid errors when processing multiple years
-  # remove(tmp_pst,tmp_shp)
+      # For rows with "M" in column "S_STATUS"
+      M_status_df$permtst_trim1 = ifelse(M_status_df$s_stats == "M", 
+          
+      # Trim the last character off the 'permitsite' string
+      strtrim(M_status_df$permtst,width=nchar(M_status_df$permtst)-1),
+  
+      # Leave other rows alone
+      M_status_df$permtst)
     
+      
+      # Create another new column from the original "permitsite" field with only the last character 
+      # from the string. This is used to double check the seperation of characters in the step above. If concatenated,
+      # '_trim1' + '_trim2' should be identical to the original 'permitsite' string.  
+      
+      # If the value in 'S_STATUS' == M
+      M_status_df$permtst_trim2 = ifelse(M_status_df$s_stats == "M",
+                                     
+           # Grab the last character in the 'permitsite' string
+           substr(x = M_status_df$permtst,
+           start = nchar(M_status_df$permtst),
+           stop = nchar(M_status_df$permtst)), 
+        
+           # Otherwise make equal to NA
+           NA)
+
+      
+      # Create a new dataframe that has each unique 'permitsite' string in the first column
+      # and the number of times it is repeated in the second column. Multi-crop fields (S_STATUS == M) 
+      # are consistently distinguised from one another by a unique character at the end (right side) 
+      # of an otherwise identical 'permitsite' string. With the last character trimmed off of those strings, 
+      # we can determine the number of crops in the multi-crop fields based on the number of duplicate
+      # permitsites in the 'permitsite_trim1' column.
+      prmtst_duplicates = as.data.frame(table(M_status_df$permtst_trim1))
+      
+      
+      # Rename columns from generic names given by table() function
+      colnames(prmtst_duplicates) = c('permitsite','n')
+      
+      # Merge multicrop_df data.frame (with permitsite_trim columns) and prmtst_dups data.frame. This merge 
+      # allows us to see how many crops are associated with each permitsite i.e. how many 
+      # crops are in each individual field. 
+      M_status_df_final = merge(M_status_df, 
+                                 prmtst_duplicates, 
+                                 by.x="permtst_trim1", 
+                                 by.y="permitsite", 
+                                 type = "right") %>% 
+        dplyr::select(permtst,n)
+      
+      # Rename columns for merge and later use
+      colnames(M_status_df_final) = c("permtst","N_crops_prmtst")
+      
+      
+      # Merge the final multicrop_df dataframe into the tmp_orgs_df_final simple features data.frame
+      tmp_orgs_df_final = merge(tmp_orgs_df, M_status_df_final, by = 'permtst')
+      
+      # Remove extra dataframes that could accidentally carry into other years
+      remove(M_status_df_final,prmtst_duplicates,M_status_df,tmp_orgs_df)
+      
+      # Convert the acres column to numeric
+      tmp_orgs_df_final$acres = as.numeric(as.character(tmp_orgs_df_final$acres))
+      
+      # create a 'hectares' column using the 'acres' column
+      tmp_orgs_df_final$hectares = tmp_orgs_df_final$acres*0.405/tmp_orgs_df_final$N_crops_prmtst
+      
+      # Create a kilograms of active ingredients per hectare column
+      tmp_orgs_df_final$kgperhec = tmp_orgs_df_final$KgPestAI/tmp_orgs_df_final$hectares
+      
+        # Write the shapefile in to the output directory
+        writeOGR(as(tmp_orgs_df_final,"Spatial"),
+                 paste0("../R_output/spatial/final_organics_data/",i,"/"),
+                 paste0("all_organics_pest_",i),
+                 driver = "ESRI Shapefile",
+                 overwrite_layer = TRUE)
+      
 }
 
 
-
 ```
-
 
 
 

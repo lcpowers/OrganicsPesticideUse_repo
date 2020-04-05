@@ -1,0 +1,9 @@
+---
+title: "6 Compile data and explore"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
