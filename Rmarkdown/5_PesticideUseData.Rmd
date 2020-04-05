@@ -103,7 +103,6 @@ for(i in years){
   join_pst$year = i
   
   join_pst[17:37][is.na(join_pst[17:37])] <- 0
-  join_pst$year <- i
   
   # Assign a unique name based on the year
   assign(paste0("organics_pest_",i), join_pst)

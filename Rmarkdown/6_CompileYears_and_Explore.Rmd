@@ -7,3 +7,113 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+#### 1. Get Packages, set working directory, etc. 
+```{r packages}
+library(tidyverse)
+library(rgdal)
+library(sf)
+
+setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
+
+```
+
+#### 2. Read in data for each year
+```{r data}
+
+years = 2013:2017
+
+for(i in years){
+  
+  tmp = readOGR(paste0("../R_output/spatial/final_organics_data/",i,"/all_organics_pest_",i,".shp")) %>% 
+    st_as_sf() %>% 
+    as.data.frame() %>% 
+    dplyr::select(-geometry)
+  
+  assign(paste0("organics_df_",i),tmp)
+  
+  rm(tmp)
+  
+}
+
+```
+
+#### 3. Compile (rbind) years into one df
+```{r compile}
+
+all_years <- data.frame(matrix(ncol=40,nrow=0))
+colnames(all_years) <- colnames(organics_df_2013)
+
+for(i in years){
+  
+  tmp <- eval(as.name(paste0("organics_df_",i)))
+  
+  all_years = rbind(all_years,tmp)
+  
+  remove(tmp)
+  
+}
+
+# Check
+table(all_years$year)
+
+```
+
+```{r}
+
+repeat_yrs = all_years %>% 
+  group_by(permtst) %>% 
+  summarise(number_years = n())
+
+table(repeat_yrs$number_years)
+```
+
+#### 5. Visualize some data
+
+Organics per year
+```{r orgs_per_year}
+
+org_fields_perYear = all_years %>% 
+  group_by(year) %>% 
+  summarise(cdfa_organics = sum(cdf_rgn),
+            all_organics = sum(all_rgn))
+
+ggplot(org_fields_perYear,aes(x = as.factor(year), y = cdfa_organics, fill = as.factor(year)))+
+  geom_col()+
+  geom_label(aes(label = cdfa_organics))+
+  theme_classic()
+
+ggplot(org_fields_perYear,aes(x = as.factor(year),y = all_organics,fill = as.factor(year)))+
+  geom_col()+
+  geom_label(aes(label = all_organics))+
+  theme_classic()
+```
+
+Field size (hectares)
+```{r field_size}
+mean_hectares = all_years %>% 
+  group_by(year,cdf_rgn) %>% 
+  summarise(mean_hectares = round(mean(hectars),2))
+
+ggplot(mean_hectares,aes(x = cdf_rgn,y = mean_hectares,fill=as.factor(cdf_rgn)))+
+  geom_col()+
+  geom_label(aes(label = mean_hectares))+
+  facet_wrap(~year)
+```
+
+Soil Quality
+```{r soilQuality}
+
+mean_hectares = all_years %>% 
+  group_by(year,cdf_rgn) %>% 
+  summarise(mean_soilQ = round(mean(soil_q),2))
+
+ggplot(mean_hectares,aes(x = cdf_rgn,y = mean_soilQ,fill=as.factor(cdf_rgn)))+
+  geom_col()+
+  geom_label(aes(label = mean_soilQ))+
+  facet_wrap(~year)
+```
+
+
+
+
+
