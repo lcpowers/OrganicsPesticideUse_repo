@@ -34,7 +34,7 @@ library(reshape2)
 library(rgdal)
 
 # Set working directory for For Claire's computer
-setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
+# setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Bring in the function stored in the '1_APN_edit.R' script. If editing that function, 
 # check the box that says 'source on save' to upload that latest version of the function 
