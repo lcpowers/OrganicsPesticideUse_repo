@@ -18,7 +18,7 @@ APN_edit_fun = function(input_df,id_cols,apn_cols,col_names,year){
   # Trim any string in column A that is greater than 3 numbers to be exactly 3 numbers long
   separate_apns$a <- strtrim(separate_apns$a, width=3)
   # If a string in column A is less than 3 digits long, pad on the right side with a 0
-  separate_apns$a <- str_pad(separate_apns$a, width=3, side="right", pad="0")
+  separate_apns$a <- str_pad(separate_apns$a, width=3, side="left", pad="0")
   
   # Trim any string in column B >3 digits
   separate_apns$b <- strtrim(separate_apns$b, width=3)
@@ -28,7 +28,7 @@ APN_edit_fun = function(input_df,id_cols,apn_cols,col_names,year){
   # Trim any digit in column C >2 digits
   separate_apns$c <- strtrim(separate_apns$c, width=2)
   # Pad column C with a 0 on the right side
-  separate_apns$c <- str_pad(separate_apns$c, width=2, side="right", pad="0")
+  separate_apns$c <- str_pad(separate_apns$c, width=2, side="left", pad="0")
   
   # Combine the APN segments from above (A, B, and C) into a single APN with 
   # the segments separated by a '-'

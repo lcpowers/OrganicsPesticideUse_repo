@@ -4,7 +4,7 @@ KernCoParcel_CDFA_join = function(year,kern_parcel_shp){
   timestamp()
   
   # Read in CSV of edited APNs for year being evaluated
-  cdfa_df = read_csv(paste0("../R_input/CSV/CDFA/final/CDFA_APNs_",year,".csv"))
+  cdfa_df = read_csv(paste0("../R_input/CSV/CDFA/final_APN/CDFA_APNs_",year,".csv"))
   
   # Join CSV data to Kern County Parcel data on APN
   join <- merge(kern_parcel_shp, # File x

@@ -78,8 +78,8 @@ rm(apn_params)
 # multiple columns. Those that have fewer than the maximum number of dahes recieve NAs in 
 # those columns. The warning is not problematic and does not effect those APN values. 
 ```
-
 All subsequent years follow the same order of operations as those explained in the code chunk above for 2013. 
+
 
 #### 2014
 ```{r yr2014, message=FALSE}
@@ -98,6 +98,7 @@ cdfa_2014_final_df = APN_edit_fun(cdfa_2014_raw,
 rm(apn_params)
 ```
 
+
 #### 2015
 ```{r yr2015}
 cdfa_2015_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2015.csv")
@@ -115,6 +116,7 @@ cdfa_2015_final = APN_edit_fun(cdfa_2015_raw,
 rm(apn_params)
 ```
 
+
 #### 2016
 ```{r yr2016, message=FALSE}
 cdfa_2016_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2016.csv")
@@ -131,6 +133,7 @@ cdfa_2016_final_df = APN_edit_fun(cdfa_2016_raw,
                                   year = apn_params$year)
 rm(apn_params)
 ```
+
 
 #### 2017
 ```{r yr2017, message=FALSE}
