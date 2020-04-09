@@ -27,7 +27,7 @@ library(rgdal) # GDAL for R.
 library(sf) # For simple features operations in R. Allows the attribute table of a shapefile to be converted to a dataframe structure while maintaining the geometry for easy data view and operations. 
 
 # Set working directory for For Claire's computer
-setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
+# setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Bring in function stored in the '3_KernCountyParcel_CDFA_join.R' script. If editing that 
 # function, check the box that says 'source on save' to upload that latest version of the 
@@ -105,9 +105,12 @@ kern_sections_slct$trs <- str_sub(kern_sections_slct$MTRS,2,9)
 
 yrs = 2013:2017
 
-dir.create("../R_output/spatial/CDFA_PLSS_sections/")
+
 
 for(i in yrs){
+  
+  outputfile=paste0("../R_output/spatial/CDFA_PLSS_sections/",i)
+  dir.create(outputfile)
   
   # Read in CDFA data with the TRS codes pulled from the APN column
   cdfa_trs_df = read_csv(paste0("../R_input/CSV/CDFA/excel_edited_PLSS/cdfa_trs_",i,".csv")) %>% 
@@ -131,13 +134,14 @@ for(i in yrs){
     dplyr::select(trs,company = "Company",geometry) %>% 
     as(.,"Spatial")
 
-  
+  #Layer Name
+  cdfalayer=paste0("cdfa_sections_",i)
   
   writeOGR(cdfa_sections_unique,
-           dsn = paste0("../R_output/spatial/CDFA_PLSS_sections/",i,"/"),
-           layer = paste0("cdfa_sections_",i),
+           dsn = outputfile,
+           layer =cdfalayer,
            driver = "ESRI Shapefile",
-           overwrite = T)
+           overwrite = TRUE)
   
   # Remove CDFA dataframes to make sure there isn't crossover between years
   
