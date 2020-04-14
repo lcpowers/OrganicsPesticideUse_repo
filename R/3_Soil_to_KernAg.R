@@ -44,9 +44,12 @@ Soil_to_KernAg_fun = function(year){
   ## Convert back into Shapefile
   ag_shp_withSoil = as(ag_slct, "Spatial")
   
+  #Create year subfolder
+  dir.create(paste0("../R_output/spatial/KernAg_withSoil/", year))
+  
   ## Write output shapefile
   writeOGR(obj = ag_shp_withSoil,
-           dsn = paste0("../R_output/spatial/KernAg_withSoil/",year,"/"),
+           dsn = paste0("../R_output/spatial/KernAg_withSoil/",year),
            layer = paste0("KernAg_withSoil_",year),
            driver = "ESRI Shapefile",
            overwrite_layer = TRUE)

@@ -133,11 +133,11 @@ for(i in years){
       # For rows with "M" in column "S_STATUS"
       M_status_df$permtst_trim1 = ifelse(M_status_df$s_stats == "M", 
           
-      # Trim the last character off the 'permitsite' string
-      strtrim(M_status_df$permtst,width=nchar(M_status_df$permtst)-1),
-  
-      # Leave other rows alone
-      M_status_df$permtst)
+        # Trim the last character off the 'permitsite' string
+        strtrim(M_status_df$permtst,width=nchar(M_status_df$permtst)-1),
+    
+        # Leave other rows alone
+        M_status_df$permtst)
     
       
       # Create another new column from the original "permitsite" field with only the last character 
@@ -199,7 +199,7 @@ for(i in years){
       
         # Write the shapefile in to the output directory
         writeOGR(as(tmp_orgs_df_final,"Spatial"),
-                 paste0("../R_output/spatial/final_organics_data/",i,"/"),
+                 paste0("../R_output/spatial/final_organics_data/",i),
                  paste0("all_organics_pest_",i),
                  driver = "ESRI Shapefile",
                  overwrite_layer = TRUE)
