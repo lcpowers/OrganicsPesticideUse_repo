@@ -31,7 +31,7 @@ library(tidyverse)
 library(rgdal)
 library(stringi)
 library(sf)
-setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
+# setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Avoid scientific notation in dataframes
 options(scipen = 9999) 

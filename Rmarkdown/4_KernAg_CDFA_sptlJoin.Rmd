@@ -14,7 +14,6 @@ knitr::opts_chunk$set(echo = TRUE)
 1. Spatial join between CDFA APN-idetified parcels (from RMD 2) and Kern Ag parcels
 2. Spatial join between CDFA PLSS sections (identied by TRS codes in CDFA csv in RMD 2) and Kern Ag parcels, then filter the "PERMITTEE" column of the joined Kern Ag parcels for "ORGANIC"
 3. Filtering for the word "ORGANIC" in the "COMM" column in the Kern Ag data attribute table.
-     
 
 **Notes:**
 
@@ -35,7 +34,6 @@ knitr::opts_chunk$set(echo = TRUE)
        (write_cdfa_shp = TRUE)
        
 ---
-
 
 #### 1. Load packages, set working diretory, and source function in the KernAg_CDFA_join.R file 
 ```{r packages_and_function}

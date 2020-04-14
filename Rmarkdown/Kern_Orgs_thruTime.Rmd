@@ -7,22 +7,71 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r packages}
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+library(tidyverse)
+library(sp)
+library(raster)
+library(rgdal)
+library(sf)
+library(rgeos)
 
-```{r cars}
-summary(cars)
 ```
 
-## Including Plots
+```{r data}
 
-You can also embed plots, for example:
+years = 2013:2017
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+for(i in years){
+  
+  tmp = readOGR(paste0("../R_output/spatial/final_organics_data/",i,"/all_organics_pest_",i,".shp")) %>% 
+    st_as_sf() %>% 
+    dplyr::select(cdf_rgn,year) %>% 
+    as(.,"Spatial")
+  
+  assign(paste0("organics_",i),tmp)
+  
+  rm(tmp)
+  
+}
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r rasterize_years}
+
+ag_raster = raster()
+extent(ag_raster) = extent(organics_2017)
+crs(ag_raster) = crs(organics_2017)
+res(ag_raster) = 30
+
+years = 2013:2017
+
+for(i in years){
+  
+  org_sf = st_as_sf(eval(as.name(paste0("organics_",i)))) %>% 
+    filter(cdf_rgn == 1)
+  
+  tmp_ras = fasterize::fasterize(org_sf,ag_raster,field = 'year')
+  
+  assign(paste0("organics_ras_",i),tmp_ras)
+  
+  remove(shp,tmp_ras)
+  
+}
+
+orgsStack_1317 = raster::stack(organics_ras_2013,organics_ras_2014,organics_ras_2015,organics_ras_2016,organics_ras_2017)
+orgsStack_1317_df = as.data.frame(orgsStack_1317)
+
+colnames(orgsStack_1317_df) = c("y2013","y2014","y2015","y2016","y2017")
+
+orgsStack_1317_df = filter(orgsStack_1317_df,!is.na(y2013)|!is.na(y2014)|!is.na(y2015)|!is.na(y2016)|!is.na(y2017))
+
+org_years_df = orgsStack_1317_df
+
+org_years_df[org_years_df[,1:5]>1] = 1
+org_years_df[is.na(org_years_df[,1:5])] = 0
+org_years_df$org_years = sum(org_years_df$y2013)
+
+```
+

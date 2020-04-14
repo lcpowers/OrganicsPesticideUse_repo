@@ -91,6 +91,7 @@ ggplot(filter(comm_regression_df, ), aes(x = organic, y = hectars))+
 ## On individual crop types
 
 simple_indv_reg = lm(kgperhc~croptype+organic+soil_q+hectars, data = comm_regression_df) # Mainly to see how data is being read in regression
+
 summary(simple_indv_reg) # Look at regression results
 
 field_soil_lm = lm(soil_q~hectars, data=comm_regression_df)
@@ -104,6 +105,7 @@ summary(simple_grp_reg) # Look at regression results
 field_soil_lm = lm(soil_q~hectars, data=comm_regression_df)
 summary(field_soil_lm)
 ```
+
 
 # Propensity score estimation for dataset with Crop reference variable
 ```{r estimate_scores}
@@ -160,8 +162,8 @@ matches %>%
   dplyr::select(one_of(cov)) %>%
   summarise_all(funs(mean))  # Find the means of each covariate group within the org or conv groups
 
-t.test(matches$soil_q~matches$organic)
-t.test(matches$hectars~matches$organic)
+t.test(matches$soil_q ~ matches$organic)
+t.test(matches$hectars ~ matches$organic)
 
 # Checking another way
 ggplot(matches,aes(x = distance,y = soil_q,color=organic))+
@@ -177,6 +179,7 @@ ggplot(matches,aes(x = distance,y = hectars,color=organic))+
 ggplot(matches,aes(x = distance,y = croptype,color=organic))+
   geom_point()+
   theme_bw()
+
 ```
 
 
@@ -214,7 +217,5 @@ plot(matches_reg)
 ** Producers that have both organic and conventional
 - Isolate to farmers who grow both and compare pesticide use 
 - How to do the stats on this
-
-
 
 
