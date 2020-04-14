@@ -20,7 +20,7 @@ library(tidyverse)
 library(rgdal)
 library(sf)
 library(MatchIt) ## Package with Propensity Score Matching
-library(optmatch)
+library(optmatch) #Additional package for optimal matching
 options(scipen = 9999) ## Avoid scientific notation
 # setwd("~/Desktop/Organics_Final/Working/organics_repo/") # Set working directory to make relative filepath names work
 
@@ -48,15 +48,15 @@ ag_summary = data %>%
      summarise(total_fields = n(),
                organic_fields = sum(cdfa_org),
                conv_fields = n()-sum(cdfa_org)) %>% 
-  filter(organic_fields > 9 & conv_fields > 9) %>% 
+  filter(organic_fields > 9 & conv_fields > 9) %>% #Why 9?
   arrange(-organic_fields)
 
-common_crops = as.factor(as.character(ag_summary$comm_edit))
-agro_classes = as.factor(as.character(data$agroclass[data$cdfa_org==1]))
+common_crops = as.factor(as.character(ag_summary$comm_edit)) #Crops with >0 fields conventional and organic for 2017
+agro_classes = as.factor(as.character(data$agroclass[data$cdfa_org==1])) #Ag classes for organic 
 
 comm_regression_df = data %>% 
   filter(year == 2017) %>% 
-  filter(soil_quality > 0 & comm_edit%in%common_crops) %>% 
+  filter(soil_quality > 0 & comm_edit%in%common_crops) %>% #Soil greater >0 and for commodities defined by common_crops
   dplyr::select(permitsite,
          permittee,
          "croptype" = comm_edit,
@@ -64,18 +64,18 @@ comm_regression_df = data %>%
          soil_quality,
          KgPstAI,
          KgPerHE,
-         hectares)
+         hectares) #Permit site based
 
 agroclass_regression_df = data %>% 
   filter(year == 2017) %>% 
-  filter(soil_quality >0 & agroclass%in%agro_classes) %>% 
+  filter(soil_quality >0 & agroclass%in%agro_classes) %>% #Soil greater >0 and for ag classes found for organic fields
   dplyr::select(agroclass,
          comm_edit,
          cdfa_org,
          soil_quality,
          KgPstAI,
          KgPerHE,
-         hectares)
+         hectares) #Ag class based
 ```
 
 # Data Exploration
@@ -203,7 +203,9 @@ ggplot(matches,aes(x = distance,y = agroclass,color=cdfa_org))+
 ## Regression with **propensity scores as covariate**
 ```{r reg_with_pscores}
 
-comm_regression_df$pscores = predict.glm(propensity_logit,type="response")
+#Sofie:Whole section below does not work for me
+
+comm_regression_df$pscores = predict.glm(propensity_logit,type="response")#CAn you use this equation on this dataset? Equation used other dataset
 comm_regression_filter = comm_regression_df %>% 
   filter(pscores > 0.3 & pscores < 0.7)
 
@@ -221,7 +223,8 @@ plot(pscore_reg)
 matches_filter = matches %>% 
   filter(distance > .1 & distance <.9)
 
-matches_reg = lm(KgPerHE ~ croptype + cdfa_org + hectares + soil_quality , data = matches_filter)
+# matches_reg = lm(KgPerHE ~ croptype + cdfa_org + hectares + soil_quality , data = matches_filter)#croptype not defined as variable
+matches_reg = lm(KgPerHE ~ comm_edit + cdfa_org + hectares + soil_quality , data = matches_filter)
 summary(matches_reg)
 
 plot(matches_reg)
