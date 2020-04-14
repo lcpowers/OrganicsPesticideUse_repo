@@ -57,9 +57,9 @@ cdfa_2013_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2
 
 # Define parameters for APN_edit function in a list of elements. These also could be defined 
 # directly in the function arguments below. 
-apn_params = list(id_cols = 2, # ID Column used to go from wide to long format
+apn_params = list(id_cols = 1:2, # ID Column used to go from wide to long format
                   apn_cols = 19:72, # These are the APN columns what will be melted into one
-                  col_names = c("company","APN_index","original_apn"), # Column names of the new long table
+                  col_names = c("orgID", "company","APN_index","original_apn"), # Column names of the new long table
                   year = 2013) # Year being evaluated
 
 # Create output directories
@@ -85,9 +85,9 @@ All subsequent years follow the same order of operations as those explained in t
 ```{r yr2014, message=FALSE}
 cdfa_2014_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2014.csv")
 
-apn_params = list(id_cols = 2,
+apn_params = list(id_cols = 1:2,
                   apn_cols = 21:74, 
-                  col_names = c("company","APN_index","original_apn"),
+                  col_names = c("orgID", "company","APN_index","original_apn"),
                   year = 2014)
 
 cdfa_2014_final_df = APN_edit_fun(cdfa_2014_raw, 
@@ -103,9 +103,9 @@ rm(apn_params)
 ```{r yr2015}
 cdfa_2015_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2015.csv")
 
-apn_params = list(id_cols = 2, 
+apn_params = list(id_cols = 1:2, 
                   apn_cols = 21:74, 
-                  col_names = c("company","APN_index","original_apn"),
+                  col_names = c("orgID", "company","APN_index","original_apn"),
                   year = 2015)
 
 cdfa_2015_final = APN_edit_fun(cdfa_2015_raw, 
@@ -121,9 +121,9 @@ rm(apn_params)
 ```{r yr2016, message=FALSE}
 cdfa_2016_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2016.csv")
 
-apn_params = list(id_cols = 2, 
+apn_params = list(id_cols = 1:2, 
                   apn_cols = 21:74, 
-                  col_names = c("company","APN_index","original_apn"),
+                  col_names = c("orgID", "company","APN_index","original_apn"),
                   year = 2016)
 
 cdfa_2016_final_df = APN_edit_fun(cdfa_2016_raw, 
@@ -139,9 +139,9 @@ rm(apn_params)
 ```{r yr2017, message=FALSE}
 cdfa_2017_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2017.csv")
 
-apn_params = list(id_cols = 2, 
+apn_params = list(id_cols = 1:2, 
                   apn_cols = 21:74, 
-                  col_names = c("company","APN_index","original_apn"),
+                  col_names = c("orgID", "company","APN_index","original_apn"),
                   year = 2017)
 
 cdfa_2017_final_df = APN_edit_fun(cdfa_2017_raw, 
