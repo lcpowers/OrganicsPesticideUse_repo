@@ -1,5 +1,5 @@
 ---
-title: "Creating_the_table"
+title: "Creating a summary table"
 output:
   pdf_document: default
   html_document: default
@@ -15,10 +15,10 @@ library(rgdal)
 library(sf)
 library(tidyverse)
 library(rgdal)
-setwd("~/Desktop/Organics_Final/Working/organics_repo/Rmarkdown/")
+setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 options(scipen = 9999)
 
-raw_df = readOGR("../R_output/spatial/final_organics_data/cdfa_organics.shp") %>% 
+input_df = readOGR("../R_output/spatial/final_organics_data/2017/all_organics_pest_2017.shp") %>% 
   st_as_sf() %>% 
   as.data.frame() %>% 
   dplyr::select(-geometry)
@@ -26,18 +26,19 @@ raw_df = readOGR("../R_output/spatial/final_organics_data/cdfa_organics.shp") %>
 
 #### 2. Filter data.frame and keep only the 5 most common organic crops
 ```{r top5_crops}
+# CDFA Organic Column
 
-raw_df$comm_dt = as.factor(raw_df$comm_dt)
+input_df$comm_dt = as.factor(input_df$comm_dt)
 
-df_fltr = raw_df %>% 
-     group_by(comm_dt) %>% 
+df_fltr = input_df %>% 
+     group_by(genus,comm_dt) %>% 
      summarise(total_fields = n(),
-               organic_fields = sum(organic),
-               conv_fields = n()-sum(organic)) %>% 
+               organic_fields = sum(cdf_rgn),
+               conv_fields = n()-sum(cdf_rgn)) %>% 
   filter(organic_fields > 9 & conv_fields > 9) %>% 
   arrange(-organic_fields)
 
-common_crops = as.character(df_fltr$comm_dt)
+common_crops = as.character(df_fltr$agrclss)
 top5_crops = as.character(head(df_fltr$comm_dt,5))
 
 # crop1 = as.character(top_crops[1])
@@ -47,7 +48,7 @@ top5_crops = as.character(head(df_fltr$comm_dt,5))
 # crop5 = as.character(top_crops[5])
 ```
 
-#### 4. Initialize emptry matrices for organic and conventional crops
+#### 4. Initialize empty matrices for organic and conventional crops
 ```{r initialize_matrices}
 
 O_matrix = matrix(ncol = 9, nrow = 7)
