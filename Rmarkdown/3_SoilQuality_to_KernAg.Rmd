@@ -30,7 +30,7 @@ library(sp) # Need for crs
 library(raster) # Need for rasterize() and extract() functions
 
 # Set working directory for For Claire's computer
-setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
+# setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Bring in function that adds rasterize Storie Index data to Kern Country Agriculture attribute table 
 source("../R/3_Soil_to_KernAg.R")
@@ -76,6 +76,11 @@ soil_ras = rasterize(x = soil_shp, y = ras, field = "SI_number")
 
 # Define the CRS again
 crs(soil_ras) = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+
+#Save raster (since it took awhile to process)
+dir.create("../R_output/spatial/SoilRaster/")
+writeRaster(soil_ras, "../R_output/spatial/SoilRaster/soil_ras.tif")
+
 ```
 
 #### 4. Use function to add Storie Index raster data to Kern County Ag shapefile attribute table. Function find the mean for polygons with multiple raster values. 

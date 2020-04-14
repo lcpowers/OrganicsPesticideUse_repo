@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 **The primary purpose of this Rmarkdown file is to identify organic ag fields using 3 approaches:**
 
-1. Spatial join between CDFA APN-idetified parcels (from RMD 2) and Kern Ag parcels
+1. Spatial join between CDFA APN-identified parcels (from RMD 2) and Kern Ag parcels
 2. Spatial join between CDFA PLSS sections (identied by TRS codes in CDFA csv in RMD 2) and Kern Ag parcels, then filter the "PERMITTEE" column of the joined Kern Ag parcels for "ORGANIC"
 3. Filtering for the word "ORGANIC" in the "COMM" column in the Kern Ag data attribute table.
      
@@ -46,7 +46,7 @@ library(sf) # Specific operations on different versions of shapefiles in R
 library(raster)
 
 # Set working directory for For Claire's computer
-setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
+# setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Access function in .R document used to join Kern Agriculture and CDFA parcel shapefiles. 
 # See the .R file for more information about the function
@@ -172,13 +172,13 @@ for(i in years){
     
       # Write Output File
       writeOGR(obj = as(apn_trs_organics_final,"Spatial"),
-         dsn = paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50/"),
+         dsn = paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50"),
          layer = paste0("TRSandAPN_organics_",i),
          driver = "ESRI Shapefile",
          overwrite_layer = T)
       
       writeOGR(obj = as(apn_trs_organics_final,"Spatial"),
-         dsn = paste0("../R_output/spatial/final_organics_data/",i,"/"),
+         dsn = paste0("../R_output/spatial/final_organics_data/",i),
          layer = paste0("TRSandAPN_organics_",i),
          driver = "ESRI Shapefile",
          overwrite_layer = T)
@@ -215,13 +215,13 @@ for(i in years){
   
   # Write Output File
   writeOGR(obj = as(tmp,"Spatial"),
-           dsn = paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50/"),
+           dsn = paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50"),
            layer = paste0("all_organics_",i),
            driver = "ESRI Shapefile",
            overwrite_layer = T)
   
   writeOGR(obj = as(tmp,"Spatial"),
-           dsn = paste0("../R_output/spatial/final_organics_data/",i,"/"),
+           dsn = paste0("../R_output/spatial/final_organics_data/",i),
            layer = paste0("all_organics_",i),
            driver = "ESRI Shapefile",
            overwrite_layer = T)
