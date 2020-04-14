@@ -18,7 +18,7 @@ library(sf)
 library(MatchIt) ## Package with Propensity Score Matching
 library(optmatch)
 options(scipen = 9999) ## Avoid scientific notation
-setwd("~/Desktop/Organics_Final/Working/organics_repo/") # Set working directory to make relative filepath names work
+# setwd("~/Desktop/Organics_Final/Working/organics_repo/") # Set working directory to make relative filepath names work
 
 ```
 
@@ -32,44 +32,43 @@ $Annual~kg/H = croptype + CDFA~organic + field~size + soil~quality$
 This is not important, it just gets rid of '-ORGANIC' from the commodity column and groups lettuce together, rather than having 'LETTUCE LEAF' and 'LETTUCE' as separate crop types. 
 ```{r get_data, echo=TRUE, message=FALSE, warning=FALSE}
 
-data = readOGR("../R_output/spatial/final_organics_data/cdfa_organics.shp") %>% 
-  st_as_sf()
+data = read_csv("../R_output/CSV/compiled_organics1317.csv")
 
-matching = data %>% 
-     as.data.frame() %>% 
-     dplyr::select(-geometry) %>% 
-     group_by(comm_dt) %>% 
+
+#### Code currently keeping all years in data.frame...not necessarily the best thing!!###
+
+ag_summary = data %>% 
+     group_by(comm_edit) %>% 
      summarise(total_fields = n(),
-               organic_fields = sum(organic),
-               conv_fields = n()-sum(organic)) %>% 
+               organic_fields = sum(cdfa_org),
+               conv_fields = n()-sum(cdfa_org)) %>% 
   filter(organic_fields > 9 & conv_fields > 9) %>% 
   arrange(-organic_fields)
 
-common_crops = as.factor(as.character(matching$comm_dt))
-org_groups = as.factor(as.character(data$cmm_grp[data$organic==1]))
+common_crops = as.factor(as.character(ag_summary$comm_edit))
+agro_classes = as.factor(as.character(data$agroclass[data$cdfa_org==1]))
 
 comm_regression_df = data %>% 
-  as.data.frame() %>% 
-  filter(soil_q > 0 & comm_dt%in%common_crops) %>% 
-  dplyr::select(permtst,
-         permitt,
-         "croptype" = comm_dt,
-         organic,
-         soil_q,
+  filter(soil_quality > 0 & comm_edit%in%common_crops) %>% 
+  dplyr::select(permitsite,
+         permittee,
+         "croptype" = comm_edit,
+         cdfa_org,
+         soil_quality,
          KgPstAI,
-         kgperhc,
-         hectars)
+         KgPerHE,
+         hectares)
 
-commgroup_regression_df = data %>% 
+agroclass_regression_df = data %>% 
   as.data.frame() %>% 
-  filter(soil_q>0 & cmm_grp%in%org_groups) %>% 
-  dplyr::select("group" = cmm_grp,
-         "croptype"=comm_dt,
-         organic,
-         soil_q,
+  filter(soil_quality >0 & agroclass%in%agro_classes) %>% 
+  dplyr::select(agroclass,
+         comm_edit,
+         cdfa_org,
+         soil_quality,
          KgPstAI,
-         kgperhc,
-         hectars)
+         KgPerHE,
+         hectares)
 ```
 
 # Data Exploration
@@ -214,8 +213,5 @@ plot(matches_reg)
 ```
 
 
-** Producers that have both organic and conventional
-- Isolate to farmers who grow both and compare pesticide use 
-- How to do the stats on this
 
 
