@@ -9,7 +9,8 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-**The purpose of this Rmarkdown file is look at descriptive statistics of all crop fields in Kern County to get a broad overview of differences between conventional and organic agriculture fields. Values for the following categories are determined and put into an output table: **  
+**The purpose of this Rmarkdown file is to look at descriptive statistics of all crop fields in Kern County, to get a broad overview of differences between conventional and organic agriculture fields. Values for the following categories are determined and put into an output table: **  
+
       * Total number of fields (total_fields)
       * Total hectares (total_hectares)
       * Average Field Size (average_field_size)
@@ -38,36 +39,39 @@ library(reshape2)
 #### 2. Read in full shapefile and convert to sf
 ```{r read_in_shapefiles}
 
-cdfa_organics_2017 = readOGR() %>% 
-  st_as_sf()
+organics_sf = readOGR("../R_output/spatial/final_organics_data/all_years/all_years_organics.shp")
 
 ```
 
-#### 3. Find organic crop types that have at least 5 fields/sites
+#### 3. Find organic crop types that have at least 5 fields/sites and 5 conventional fields of the same crop
 ```{r top_organic_crops}
 
-top_crops_df = cdfa_organics_2017 %>% 
-  as.data.frame() %>% # Convert to data.frame
-  dplyr::select(-geometry) %>% # Remove geometry column
-  group_by(comm_dt) %>% # Group by COMM column
-  summarise(total_orgFields = sum(organic)) %>% # Sum the CDFA column. This tells us how much organic fields of each crop type there are
-  arrange(-total_orgFields) %>% # Sort the table in descending order of number of fields per crop type
-  filter(total_orgFields >= 10) # Get rid of crops with fewer than ten organic fields
+yr = 2017
 
-comparison_crops = top_crops_df$comm_dt # Create a new vector with names of crops with at least five fields
+top_crops_df = organics_sf %>% 
+  as.data.frame() %>% # Convert to data.frame
+  filter(year == yr) %>% 
+  group_by(comm_dt) %>% # Group by COMM column
+  summarise(total_fields = n(),
+            total_orgFields = sum(cdf_rgn),
+            total_convFields = n() - sum(cdf_rgn)) %>% # Sum the CDFA column. This tells us how much organic fields of each crop type there are
+  arrange(-total_orgFields) %>% # Sort the table in descending order of number of fields per crop type
+  filter(total_orgFields >= 10 & total_convFields >= 10) # Get rid of crops with fewer than ten organic fields
+
+comparison_crops = as.character(top_crops_df$comm_dt) # Create a new vector with names of crops with at least five fields
 comparison_crops # Display in an Rmarkdown document
 ```
 
 #### 4. Summary stats of all fields, conventional or organic, that contain one of the 19 crops listed above
 ```{r all_fields}
 
-years = 2017
+years = 2013:2017
 
 for(i in years){
     
-     tmp = eval(as.name(paste0("cdfa_organics_",i))) %>% 
+     tmp = organics_sf %>% 
        as.data.frame() %>% 
-       dplyr::select(-geometry) %>% 
+       filter(year == i) %>% 
        filter(comm_dt %in% comparison_crops) %>% 
        summarise(total_fields = n(),
                  total_hectares = round(sum(acres*0.405/N_crps_),1),
@@ -86,11 +90,11 @@ for(i in years){
 ```{r org_sum_stats}
 for(i in years){
     
-     tmp = eval(as.name(paste0("cdfa_organics_",i))) %>% 
+     tmp = organics_sf %>% 
        as.data.frame() %>% 
-       dplyr::select(-geometry) %>% 
+       filter(year == i) %>% 
        filter(comm_dt %in% comparison_crops) %>% 
-       filter(organic == "1") %>% 
+       filter(cdf_rgn == "1") %>% 
        summarise(total_fields = n(),
                  total_hectares = round(sum(acres*0.405/N_crps_),1),
             avg_field_size = round(mean(acres*0.405/N_crps_),1),
@@ -108,11 +112,11 @@ for(i in years){
 ```{r conv_sum_stats}
 for(i in years){
     
-     tmp = eval(as.name(paste0("cdfa_organics_",i))) %>% 
+     tmp = organics_sf %>% 
        as.data.frame() %>% 
-       dplyr::select(-geometry) %>% 
+       filter(year == i) %>%
        filter(comm_dt %in% comparison_crops) %>% 
-       filter(organic == "0") %>% 
+       filter(cdf_rgn == "0") %>% 
        summarise(total_fields = n(),
                  total_hectares = round(sum(acres*0.405/N_crps_),1),
             avg_field_size = round(mean(acres*0.405/N_crps_),1),
@@ -137,11 +141,11 @@ for(i in years){
                  )
      
      rownames(tmp) = c("All_50","Conv_50","Org_50")
-     assign(paste0("ALL_",i,"_SumStats"),tmp)
+     assign(paste0("allFields_",i,"_Summary"),tmp)
      
      dir.create("../R_output/CSV/SummaryStatistics/")
      
-     write_csv(tmp,paste0("../R_output/CSV/SummaryStatistics/All_Fields_",i,"_CDFAonly.csv"))
+     write_csv(tmp,paste0("../R_output/CSV/SummaryStatistics/AllFields_summary_",i,".csv"))
         remove(tmp)
 }
 ```
