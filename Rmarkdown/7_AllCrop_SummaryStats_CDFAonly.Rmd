@@ -31,14 +31,14 @@ library(sf)
 library(tidyverse)
 library(reshape2)
 
-options(scipen = 9999)
-setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown")
+# options(scipen = 9999)
+# setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown")
 ```
 
-#### 2. Read in full shapeile and convert to data.frame
+#### 2. Read in full shapefile and convert to sf
 ```{r read_in_shapefiles}
 
-cdfa_organics_2017 = readOGR("../R_output/spatial/final_organics_data/cdfa_organics.shp") %>% 
+cdfa_organics_2017 = readOGR() %>% 
   st_as_sf()
 
 ```
