@@ -10,6 +10,10 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+Useful tutorial. There are two others in the repository folder now also
+https://sejdemyr.github.io/r-tutorials/statistics/tutorial8.html
+
+
 #### 1. Load packages, set working directory, and prevent scientific notation
 ```{r get_packages, message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -19,6 +23,7 @@ library(MatchIt) ## Package with Propensity Score Matching
 library(optmatch)
 options(scipen = 9999) ## Avoid scientific notation
 # setwd("~/Desktop/Organics_Final/Working/organics_repo/") # Set working directory to make relative filepath names work
+
 
 ```
 
@@ -35,9 +40,10 @@ This is not important, it just gets rid of '-ORGANIC' from the commodity column 
 data = read_csv("../R_output/CSV/compiled_organics1317.csv")
 
 
-#### Code currently keeping all years in data.frame...not necessarily the best thing!!###
+#### Code currently just looks at 2017...not necessarily the best thing!!###
 
 ag_summary = data %>% 
+  filter(year == 2017) %>% 
      group_by(comm_edit) %>% 
      summarise(total_fields = n(),
                organic_fields = sum(cdfa_org),
@@ -49,6 +55,7 @@ common_crops = as.factor(as.character(ag_summary$comm_edit))
 agro_classes = as.factor(as.character(data$agroclass[data$cdfa_org==1]))
 
 comm_regression_df = data %>% 
+  filter(year == 2017) %>% 
   filter(soil_quality > 0 & comm_edit%in%common_crops) %>% 
   dplyr::select(permitsite,
          permittee,
@@ -60,7 +67,7 @@ comm_regression_df = data %>%
          hectares)
 
 agroclass_regression_df = data %>% 
-  as.data.frame() %>% 
+  filter(year == 2017) %>% 
   filter(soil_quality >0 & agroclass%in%agro_classes) %>% 
   dplyr::select(agroclass,
          comm_edit,
@@ -74,11 +81,11 @@ agroclass_regression_df = data %>%
 # Data Exploration
 ```{r data_explore}
 
-ggplot(comm_regression_df, aes(x = organic, y = soil_q))+
+ggplot(comm_regression_df, aes(x = cdfa_org, y = soil_quality))+
   geom_point()+
   geom_line()
 
-ggplot(filter(comm_regression_df, ), aes(x = organic, y = hectars))+
+ggplot(agroclass_regression_df, aes(x = cdfa_org, y = hectares))+
   geom_point()+
   geom_line()
 
@@ -87,48 +94,51 @@ ggplot(filter(comm_regression_df, ), aes(x = organic, y = hectars))+
 
 # Simple Linear Regression -- Just seeing how R is recognizing/processing covariates
 ```{r SLR}
+
 ## On individual crop types
+simple_comm_reg = lm(KgPerHE ~ croptype + cdfa_org + soil_quality + hectares, data = comm_regression_df) # Mainly to see how data is being read in regression
+summary(simple_comm_reg) # Look at regression results
 
-simple_indv_reg = lm(kgperhc~croptype+organic+soil_q+hectars, data = comm_regression_df) # Mainly to see how data is being read in regression
+## On agro class groups
+simple_agroclass_reg = lm(KgPerHE ~ agroclass + cdfa_org + soil_quality + hectares, data = agroclass_regression_df) # Mainly to see how data is being read in regression
+summary(simple_agroclass_reg) # Look at regression results
 
-summary(simple_indv_reg) # Look at regression results
 
-field_soil_lm = lm(soil_q~hectars, data=comm_regression_df)
-summary(field_soil_lm)
+# These are/were just to try to understand more about fieldsize and soil quality. 
+# field_soil_lm = lm(soil_quality~hectares, data=comm_regression_df)
+# summary(field_soil_lm)
+# 
+# field_soil_lm = lm(soil_quality~hectares, data=comm_regression_df)
+# summary(field_soil_lm)
+# ## On broad agro classes
 
-## On broad commodity groups
-
-simple_grp_reg = lm(kgperhc~group+organic+soil_q+hectars, data = commgroup_regression_df) # Mainly to see how data is being read in regression
-summary(simple_grp_reg) # Look at regression results
-
-field_soil_lm = lm(soil_q~hectars, data=comm_regression_df)
-summary(field_soil_lm)
 ```
 
 
 # Propensity score estimation for dataset with Crop reference variable
 ```{r estimate_scores}
+### Currently with agro class ###
 
-propensity_logit = glm(organic ~ croptype + soil_q, 
+propensity_logit = glm(cdfa_org ~ agroclass + soil_quality + hectares, 
                        family = binomial, 
-                       data = comm_regression_df)
+                       data = agroclass_regression_df)
 
-summary(propensity_logit)
+# summary(propensity_logit)
 
 # Predict propensity scores and place in a new column
 pscore_df = data.frame(pr_score = predict(propensity_logit,type = "response"),
-                    organic = comm_regression_df$organic)
+                       cdfa_org = agroclass_regression_df$cdfa_org)
 
 ```
+
 
 # Look at propensity score distribution
-```{r}
+```{r pscore_distribution}
 ggplot(pscore_df,aes(x = pr_score))+
   geom_histogram(color="white",bins=15)+
-  facet_wrap(~organic,scales="free")+
+  facet_wrap(~cdfa_org)+
   theme_bw()
 ```
-
 
 # Propensity score matching
 ```{r find_matches}
@@ -136,14 +146,20 @@ ggplot(pscore_df,aes(x = pr_score))+
 
 # matchit is the main command of the package MatchIt, which enables parametric models for causal inference to work better by selecting well-matched subsets of the original treated and control groups. MatchIt implements the suggestions of Ho, Imai, King, and Stuart (2004) for improving parametric statistical models by preprocessing data with nonparametric matching methods. MatchIt implements a wide range of sophisticated matching methods, making it possible to greatly reduce the dependence of causal inferences on hard-to-justify, but commonly made, statistical modeling assumptions. The software also easily fits into existing research practices since, after preprocessing with MatchIt, researchers can use whatever parametric model they would have used without MatchIt, but produce inferences with substantially more robustness and less sensitivity to modeling assumptions. 
 
-match = matchit(organic ~ croptype + soil_q, 
+# this can take a little while depending on the arguments included
+match = matchit(cdfa_org ~ agroclass + soil_quality + hectares, 
                 method = "nearest", 
-                data = comm_regression_df,
-                reestimate = T,
-                discard = "control")
+                replace = F,
+                ratio = 2,
+                data = agroclass_regression_df)
+
+# Matchit notes
+# https://cran.r-project.org/web/packages/MatchIt/MatchIt.pdf
+# replace = T to sample with replacement
+# ratio = 1 Match each Tx obs to one control obs
 
 # summary(match)
-plot(match)
+# plot(match)
 
 # match.data outputs matched data sets from matchit()
 matches <- match.data(match)
@@ -154,28 +170,28 @@ dim(matches)
 Look at difference in means between matches to see if they're closer than in the original data set. 
 - Differences should not be significant AKA fail to reject the null
 ```{r check_matches}
-cov <- c( 'soil_q') # Covariates to check matches with
+cov <- c('soil_quality','hectares') # Covariates to check matches with
 
 matches %>%
-  group_by(organic) %>% # Seperate the two CDFA groups (1 = ORGANIC, 0 = CONVENTIONAL)
+  group_by(cdfa_org) %>% # Seperate the two CDFA groups (1 = ORGANIC, 0 = CONVENTIONAL)
   dplyr::select(one_of(cov)) %>%
   summarise_all(funs(mean))  # Find the means of each covariate group within the org or conv groups
 
-t.test(matches$soil_q ~ matches$organic)
-t.test(matches$hectars ~ matches$organic)
+t.test(matches$soil_quality ~ matches$cdfa_org)
+t.test(matches$hectares ~ matches$cdfa_org)
 
 # Checking another way
-ggplot(matches,aes(x = distance,y = soil_q,color=organic))+
+ggplot(matches,aes(x = distance,y = soil_quality,color=cdfa_org))+
   geom_point()+
   geom_smooth(method = "loess")+
   theme_bw()
 
-ggplot(matches,aes(x = distance,y = hectars,color=organic))+
+ggplot(matches,aes(x = distance,y = hectares,color=cdfa_org))+
   geom_point()+
   geom_smooth(method = "loess")+
   theme_bw()
 
-ggplot(matches,aes(x = distance,y = croptype,color=organic))+
+ggplot(matches,aes(x = distance,y = agroclass,color=cdfa_org))+
   geom_point()+
   theme_bw()
 
@@ -191,7 +207,7 @@ comm_regression_df$pscores = predict.glm(propensity_logit,type="response")
 comm_regression_filter = comm_regression_df %>% 
   filter(pscores > 0.3 & pscores < 0.7)
 
-pscore_reg = lm(kgperhc ~ croptype + organic + hectars + soil_q + pscores, data = comm_regression_filter)
+pscore_reg = lm(KgPerHE ~ croptype + cdfa_org + hectares + soil_quality + pscores, data = comm_regression_filter)
 summary(pscore_reg)
 
 plot(pscore_reg)
@@ -205,7 +221,7 @@ plot(pscore_reg)
 matches_filter = matches %>% 
   filter(distance > .1 & distance <.9)
 
-matches_reg = lm(kgperhc ~ croptype + organic + hectars + soil_q , data = matches_filter)
+matches_reg = lm(KgPerHE ~ croptype + cdfa_org + hectares + soil_quality , data = matches_filter)
 summary(matches_reg)
 
 plot(matches_reg)

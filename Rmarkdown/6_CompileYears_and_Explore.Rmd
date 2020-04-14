@@ -66,14 +66,6 @@ write_csv(all_years, "../R_output/CSV/compiled_organics1317.csv")
 
 ```
 
-```{r}
-
-repeat_yrs = all_years %>% 
-  group_by(permtst) %>% 
-  summarise(number_years = n())
-
-table(repeat_yrs$number_years)
-```
 
 #### 5. Visualize some data
 
@@ -82,10 +74,10 @@ Organics per year
 
 org_fields_perYear = all_years %>% 
   group_by(year) %>% 
-  summarise(cdfa_organics = sum(cdf_rgn),
-            all_organics = sum(all_rgn))
+  summarise(cdfa_organics = sum(cdfa_org),
+            all_organics = sum(all_org))
 
-ggplot(org_fields_perYear,aes(x = as.factor(year), y = cdfa_organics, fill = as.factor(year)))+
+ggplot(org_fields_perYear, aes(x = as.factor(year), y = cdfa_organics, fill = as.factor(year)))+
   geom_col()+
   geom_label(aes(label = cdfa_organics))+
   theme_classic()
@@ -99,10 +91,10 @@ ggplot(org_fields_perYear,aes(x = as.factor(year),y = all_organics,fill = as.fac
 Field size (hectares)
 ```{r field_size}
 mean_hectares = all_years %>% 
-  group_by(year,cdf_rgn) %>% 
-  summarise(mean_hectares = round(mean(hectars),2))
+  group_by(year,cdfa_org) %>% 
+  summarise(mean_hectares = round(mean(hectares),2))
 
-ggplot(mean_hectares,aes(x = cdf_rgn,y = mean_hectares,fill=as.factor(cdf_rgn)))+
+ggplot(mean_hectares,aes(x = cdfa_org,y = mean_hectares,fill=as.factor(cdfa_org)))+
   geom_col()+
   geom_label(aes(label = mean_hectares))+
   facet_wrap(~year)
@@ -112,27 +104,28 @@ Soil Quality
 ```{r soilQuality}
 
 mean_hectares = all_years %>% 
-  group_by(year,cdf_rgn) %>% 
-  summarise(mean_soilQ = round(mean(soil_q),2))
+  group_by(year,cdfa_org) %>% 
+  summarise(mean_soilQ = round(mean(soil_quality),2))
 
-ggplot(mean_hectares,aes(x = cdf_rgn,y = mean_soilQ,fill=as.factor(cdf_rgn)))+
+ggplot(mean_hectares,aes(x = cdfa_org,y = mean_soilQ,fill=as.factor(cdfa_org)))+
   geom_col()+
   geom_label(aes(label = mean_soilQ))+
   facet_wrap(~year)
+
 ```
 
 
 #### 6. Check out pesticide use data
 ```{r pesticide}
 explore_pst_use = all_years %>% 
-  group_by(cdf_rgn,year) %>% 
+  group_by(cdfa_org,year) %>% 
   summarise(avg_kg_pest_ai = round(mean(KgPstAI),2), # should adjust this for number of fields
-            avg_kg_ai_perHec = round(mean(kgperhc),2))
+            avg_kg_ai_perHec = round(mean(KgPerHE),2))
 
 ggplot(explore_pst_use,aes(x = as.factor(year), y = avg_kg_pest_ai, fill = as.factor(year)))+
   geom_col()+
   geom_label(aes(label = avg_kg_ai_perHec))+
-  facet_wrap(~cdf_rgn)+
+  facet_wrap(~cdfa_org)+
   theme_classic()
 
 ```
