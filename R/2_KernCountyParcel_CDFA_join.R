@@ -19,13 +19,14 @@ KernCoParcel_CDFA_join = function(year,kern_parcel_shp){
     dplyr::select(-c("FID","APN","APN9","SHAPE_SQFT","SHAPE_ACRE","Shape__Are","Shape__Len","APN_index"))
   
   # Rename columns
-  colnames(join_sf) <- c("joind_apn",
+  colnames(join_sf) <- c("joined_apn",
+                         "orgID",
                          "company",
                          "cdfa_apn",
                          "cdfa",
                          "geometry")
   
-  assign(paste0("cdfa_parcels_",i),join_sf,envir=.GlobalEnv)
+  assign(paste0("cdfa_parcels_",year),join_sf,envir=.GlobalEnv)
   
   # Convert simple features dataframe back into shapefile with polygons
   final = as(join_sf,"Spatial")
