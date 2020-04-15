@@ -9,22 +9,257 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+###Load Packages
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+```{r packages, message=FALSE, warning=FALSE}
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+library(tidyverse) #data wrangling
+library(ggplot2) #graphing
+library(MatchIt) #Propensity Score Matching
+options(scipen = 9999) # No scientific notation
 
-```{r cars}
-summary(cars)
 ```
 
-## Including Plots
+## Load Data
+```{r data, message=FALSE, warning=FALSE}
 
-You can also embed plots, for example:
+data<-readr::read_csv("../R_output/CSV/compiled_organics1317.csv")
 
-```{r pressure, echo=FALSE}
-plot(pressure)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Subset Data
+```{r}
+
+data_model<-data %>% 
+  dplyr::select(permitsite, permittee, year, cdfa_org, 
+                KgPerHE, KgPstAI, hectares,
+                comm_edit, soil_quality) %>% 
+  dplyr::rename(fieldsize=hectares,
+                croptype=comm_edit,
+                soilquality=soil_quality) %>% 
+  na.omit #Remove NA values (only one 2013 tree row)
+
+```
+
+## Analysis
+### 1) Pre-analysis using non-matched data
+#### a)Difference-in-means:outcome variable
+
+```{r pre-analysis outcome}
+
+#Examining differences in outcome by treatment status
+  #0=conventional (control) and 1=organic (treatment)
+#Summarize model by treatment status
+data_model %>% 
+  group_by(cdfa_org) %>% 
+  summarise(fields=n(),
+            mean_KgPerHE=mean(KgPerHE),
+            se_KgPerHE=sd(KgPerHE)/sqrt(fields))
+#Summarize model by treatment status and year
+data_model %>% 
+  group_by(cdfa_org, year) %>% 
+  summarise(fields=n(),
+            mean_KgPerHE=mean(KgPerHE),
+            se_KgPerHE=sd(KgPerHE)/sqrt(fields))
+
+#T-tests to evaluate whether means are statistically different 
+with(data_model, t.test(KgPerHE ~ cdfa_org)) #significant
+
+```
+
+Conventional fields have significantly greater mean pesticide use per hectare than organic fields. However, pesticide use per hectare is growing for both, and growing at a greater rate for organic fields with greater standard error.
+
+#### b)Difference-in-means:pre-treatment covariates
+
+```{r pre-analysis covariates}
+#Examining difference in mean for each covariate by treatment status
+  #0=conventional (control) and 1=organic (treatment)
+
+#Model Covariates
+data_model_cov<-c("fieldsize", "soilquality")
+  #Cannot summarize croptype as character
+#Summarize model by treatment status
+data_model %>% 
+  group_by(cdfa_org) %>% 
+  dplyr::select(one_of(data_model_cov)) %>% 
+  summarise_all(funs(mean(., na.rm=TRUE))) 
+#Summarize model by treatment status and year
+data_model %>% 
+  group_by(cdfa_org, year) %>% 
+  dplyr::select(one_of(data_model_cov)) %>% 
+  summarise_all(funs(mean(., na.rm=TRUE))) 
+
+#T-tests to evaluate whether means are statistically different 
+with(data_model, t.test(fieldsize ~ cdfa_org)) #significant
+with(data_model, t.test(soilquality ~ cdfa_org)) #significant
+
+```
+
+Could not evaluate croptype easily/coherently, as too many values. 
+Conventional fields have signficantly greater average field size and soil quality than organic fields. Mean values of field size and soil quality are fairly consistent across years for conventional and organic fields, although 2017 organic field size slighly smaller than other years.
+
+
+
+### 2) Propensity score estimation
+Estimate propensity score with a logit model, with binary treatment status as the outcome variable and including all covariates.
+
+```{r propensity score}
+#Currently experimenting without croptype
+#Propensity score model across all years
+m_ps<-glm(cdfa_org~fieldsize + soilquality,
+          data=data_model, family=binomial())
+# summary(m_ps)
+#Propensity score model with year as factor
+m_ps_yr<-glm(cdfa_org~fieldsize + soilquality + 
+               factor(year),
+          data=data_model, family=binomial())
+# summary(m_ps_yr)
+
+#Use models to calculate propensity score per field
+prs_df <- data.frame(pr_score = predict(m_ps, type = "response"),
+                     organic = m_ps$model$cdfa_org)
+prs_df_yr <- data.frame(pr_score = predict(m_ps_yr, type = "response"),
+                     organic = m_ps_yr$model$cdfa_org)
+
+```
+
+
+#### a) Examining the region of common support
+Plot histograms of estimate propensity scores by treatment status
+
+```{r hist ps}
+
+labs <- paste("Field Type:", c("Organic", "Conventional"))
+#All years
+prs_df %>%
+  mutate(organic = ifelse(organic == 1, labs[1], labs[2])) %>%
+  ggplot(aes(x = pr_score)) +
+  geom_histogram(color = "white") +
+  facet_wrap(~organic) +
+  xlab("Probability of organic field") +
+  theme_bw()
+#Year factors
+prs_df_yr %>%
+  mutate(organic = ifelse(organic == 1, labs[1], labs[2])) %>%
+  ggplot(aes(x = pr_score)) +
+  geom_histogram(color = "white") +
+  facet_wrap(~organic) +
+  xlab("Probability of organic field") +
+  theme_bw()
+
+```
+
+
+
+### 3) Executing a matching algorithim
+Use MatchIt package and function to find pairs of observations with similar propensity scores but differ in treatment status. Package estimates propensity score in background and then matches observations based on selected method.
+
+Starting with default matchit parameters and "nearest" neighbor method.
+
+```{r matchit}
+
+#Matching all years
+mod_match <- matchit(cdfa_org ~ fieldsize + soilquality,
+                     data=data_model, method = "nearest")
+
+#Matching with years factor
+mod_match_yr <- matchit(cdfa_org ~ fieldsize + soilquality +
+                          factor(year),
+                     data=data_model, method = "nearest")
+
+#Examine matches
+summary(mod_match)
+summary(mod_match_yr)
+
+#Create dataframes of only matched observations
+dta_m <- match.data(mod_match)
+dta_m_yr <- match.data(mod_match_yr)
+
+```
+
+
+
+### 4) Examining covariate balance in the matched sample
+#### a) Visual inspection
+
+Plot means of covariates against estimate propensity score by treatment status. If good matching, treatment and control groups will have similar covariate means at each value of propensity score.
+
+
+```{r visual}
+
+fn_bal <- function(dta, variable) {
+  dta$variable <- dta[, variable]
+  dta$cdfa_org <- as.factor(dta$cdfa_org)
+  support <- c(min(dta$variable), max(dta$variable))
+  ggplot(dta, aes(x = distance, y = variable, color = cdfa_org)) +
+    geom_point(alpha = 0.2, size = 1.3) +
+    geom_smooth(method = "loess", se = F) +
+    xlab("Propensity score") +
+    ylab(variable) +
+    theme_bw() +
+    ylim(support)
+}
+
+library(gridExtra)
+grid.arrange(
+   fn_bal(dta_m, "fieldsize"),
+   fn_bal(dta_m, "soilquality") + theme(legend.position = "none"),
+   nrow = 1, widths = c(1, 0.8)
+)
+grid.arrange(
+   fn_bal(dta_m_yr, "fieldsize"),
+   fn_bal(dta_m_yr, "soilquality") + theme(legend.position = "none"),
+   nrow = 1, widths = c(1, 0.8)
+)
+
+```
+
+
+#### b) Difference-in-means
+Examine means again
+
+```{r means}
+
+#All years
+dta_m %>%
+  group_by(cdfa_org) %>%
+  dplyr::select(one_of(data_model_cov)) %>%
+  summarise_all(funs(mean))
+#Year factor
+dta_m_yr %>%
+  group_by(cdfa_org) %>%
+  dplyr::select(one_of(data_model_cov)) %>%
+  summarise_all(funs(mean))
+
+#T-tests to evaluate whether means are statistically different 
+with(dta_m, t.test(fieldsize ~ cdfa_org)) #slightly significant still-need to improve
+with(dta_m, t.test(soilquality ~ cdfa_org)) # not significant!
+
+#By year
+with(dta_m_yr, t.test(fieldsize ~ cdfa_org)) #not significant!
+with(dta_m_yr, t.test(soilquality ~ cdfa_org)) # not significant!
+
+```
+
+
+### 5) Estimating treatment effects
+Estimate treatment effect with matched sample t-test or OLS with covariates
+
+```{r treatment}
+
+#T-tests
+with(dta_m, t.test(KgPerHE ~ cdfa_org))
+with(dta_m_yr, t.test(KgPerHE ~ cdfa_org))
+
+#OLS
+lm_treat <- lm(KgPerHE ~ cdfa_org + fieldsize + soilquality, 
+               data = dta_m)
+lm_treat_yr <- lm(KgPerHE ~ cdfa_org + fieldsize + soilquality+
+                    factor(year), 
+               data = dta_m_yr)
+summary(lm_treat)
+summary(lm_treat_yr)
+
+
+```
+
