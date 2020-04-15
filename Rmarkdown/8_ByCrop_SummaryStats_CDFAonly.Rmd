@@ -46,8 +46,8 @@ topCrops_df = organics_sf %>%
   filter(year == 2017) %>% 
   group_by(comm_dt) %>% 
   summarise(total_fields = n(),
-            total_orgFields = sum(cdf_rgn),
-            total_convFields = n() - sum(cdf_rgn)) %>% 
+            total_orgFields = sum(cdfa_rg),
+            total_convFields = n() - sum(cdfa_rg)) %>% 
   arrange(-total_orgFields) %>% 
   filter(total_orgFields >= 10 & total_convFields >= 10)
 
@@ -63,14 +63,14 @@ for(i in years){
     
      tmp = organics_sf %>%  # Call dataframe that corresponds to the correct buffer width and year
        as.data.frame() %>% # Remove the spatial characteristic of the dataframe
-       filter(cdf_rgn == "1" & comm_dt %in% comparable_crops) %>% # Filter for CDFA Organic fields
+       filter(cdfa_rg == "1" & comm_dt %in% comparable_crops) %>% # Filter for CDFA Organic fields
        group_by(comm_dt) %>% # Group by the commodity
        summarise(total_fields = n(), # Count total number of fields for each commodity
-                 total_hectares = round(sum(hectars/N_crps_),1), # Count hectares for each commodity
-                 average_field_size = round(mean(hectars/N_crps_),1), # Find average field size for each commodity
-                 average_SoilQ = mean(soil_q, na.rm = T), # Find average soil quality for each commodity
+                 total_hectares = round(sum(hectars/N_crops),1), # Count hectares for each commodity
+                 average_field_size = round(mean(hectars/N_crops),1), # Find average field size for each commodity
+                 average_SoilQ = mean(sl_qlty, na.rm = T), # Find average soil quality for each commodity
                  total_pest_app = sum(KgPstAI), # Total pesticide applied for this crop
-                 kg_per_hectare = sum(KgPstAI)/sum(hectars/N_crps_)) %>% # Pesticide per hectare
+                 kg_per_hectare = sum(KgPstAI)/sum(hectars/N_crops)) %>% # Pesticide per hectare
        arrange(-total_fields) # Arrange dataframe with total field column in descending order
 
      
@@ -91,14 +91,14 @@ for(i in years){
      tmp = organics_sf %>% 
        as.data.frame() %>% 
        filter(year == i) %>% 
-       filter(cdf_rgn == "0" & comm_dt %in% comparable_crops) %>% # Filter for nonCDFA (conventional) fields and the five most common oganic crops 
+       filter(cdfa_rg == "0" & comm_dt %in% comparable_crops) %>% # Filter for nonCDFA (conventional) fields and the five most common oganic crops 
        group_by(comm_dt) %>% 
        summarise(total_fields = n(),
-                 total_hectares = round(sum(hectars/N_crps_),1),
-                 average_field_size = round(mean(hectars/N_crps_),1),
-                 average_SoilQ = mean(soil_q, na.rm = T),
+                 total_hectares = round(sum(hectars/N_crops),1),
+                 average_field_size = round(mean(hectars/N_crops),1),
+                 average_SoilQ = mean(sl_qlty, na.rm = T),
                  total_pest_app = sum(KgPstAI),
-                 kg_per_hectare = sum(KgPstAI)/sum(hectars/N_crps_)) %>% 
+                 kg_per_hectare = sum(KgPstAI)/sum(hectars/N_crops)) %>% 
        arrange(comm_dt) # Arrange order of the 'crops' character vector
      
      assign(paste0("CONV_",i,"_SumStats"),tmp)
@@ -119,11 +119,11 @@ for(i in years){
        filter(comm_dt %in% comparable_crops) %>% # Filter for the five most common oganic crops 
        group_by(comm_dt) %>% 
        summarise(total_fields = n(),
-                 total_hectares = round(sum(hectars/N_crps_),1),
-                 average_field_size = round(mean(hectars/N_crps_),1),
-                 average_SoilQ = mean(soil_q, na.rm = T),
+                 total_hectares = round(sum(hectars/N_crops),1),
+                 average_field_size = round(mean(hectars/N_crops),1),
+                 average_SoilQ = mean(sl_qlty, na.rm = T),
                  total_pest_app = sum(KgPstAI),
-                 kg_per_hectare = sum(KgPstAI)/sum(hectars/N_crps_)) %>% 
+                 kg_per_hectare = sum(KgPstAI)/sum(hectars/N_crops)) %>% 
        arrange(comm_dt) # Arrange order of the 'crops' character vector
      
      assign(paste0("ALL_",i,"_SumStats"),tmp)

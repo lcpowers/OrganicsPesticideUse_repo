@@ -15,7 +15,7 @@ library(rgdal)
 library(sf)
 library(tidyverse)
 library(rgdal)
-setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
+# setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 options(scipen = 9999)
 
 input_df = readOGR("../R_output/spatial/final_organics_data/2017/all_organics_pest_2017.shp") %>% 
@@ -24,7 +24,7 @@ input_df = readOGR("../R_output/spatial/final_organics_data/2017/all_organics_pe
   dplyr::select(-geometry)
 ```
 
-#### 2. Filter data.frame and keep only the 5 most common organic crops
+#### 2. Filter data.frame and keep only the 5 most common organic crops in 2017
 ```{r top5_crops}
 # CDFA Organic Column
 
