@@ -14,6 +14,9 @@ Useful tutorial. There are two others in the repository folder now also
 https://sejdemyr.github.io/r-tutorials/statistics/tutorial8.html
 
 
+#### Right now this is goes through the regression using 'agroclass' as the crop variable. I have also tried out 'comm_edit' and 'comm_group', which  is where some of those notes are coming from. 
+
+
 #### 1. Load packages, set working directory, and prevent scientific notation
 ```{r get_packages, message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -23,8 +26,6 @@ library(MatchIt) ## Package with Propensity Score Matching
 library(optmatch) #Additional package for optimal matching
 options(scipen = 9999) ## Avoid scientific notation
 # setwd("~/Desktop/Organics_Final/Working/organics_repo/") # Set working directory to make relative filepath names work
-
-
 ```
 
 Simple linear regression equation
@@ -39,11 +40,10 @@ This is not important, it just gets rid of '-ORGANIC' from the commodity column 
 
 data = read_csv("../R_output/CSV/compiled_organics1317.csv")
 
-
 #### Code currently just looks at 2017...not necessarily the best thing!!###
 
 ag_summary = data %>% 
-  filter(year == 2017) %>% 
+     filter(year == 2017) %>% 
      group_by(comm_edit) %>% 
      summarise(total_fields = n(),
                organic_fields = sum(cdfa_org),
@@ -203,13 +203,16 @@ ggplot(matches,aes(x = distance,y = agroclass,color=cdfa_org))+
 ## Regression with **propensity scores as covariate**
 ```{r reg_with_pscores}
 
-#Sofie:Whole section below does not work for me
+# Sofie: Whole section below does not work for me
+# Claire: For some reason updated df names didn't save. Should work now?
 
-comm_regression_df$pscores = predict.glm(propensity_logit,type="response")#CAn you use this equation on this dataset? Equation used other dataset
-comm_regression_filter = comm_regression_df %>% 
-  filter(pscores > 0.3 & pscores < 0.7)
+agroclass_regression_df$pscores = predict.glm(propensity_logit, 
+                                         type="response",
+                                         newdata = agroclass_regression_df) 
 
-pscore_reg = lm(KgPerHE ~ croptype + cdfa_org + hectares + soil_quality + pscores, data = comm_regression_filter)
+#Can you use this equation on this dataset? Equation used other dataset
+
+pscore_reg = lm(KgPerHE ~ agroclass + cdfa_org + hectares + soil_quality + pscores, data = agroclass_regression_df)
 summary(pscore_reg)
 
 plot(pscore_reg)
@@ -223,8 +226,7 @@ plot(pscore_reg)
 matches_filter = matches %>% 
   filter(distance > .1 & distance <.9)
 
-# matches_reg = lm(KgPerHE ~ croptype + cdfa_org + hectares + soil_quality , data = matches_filter)#croptype not defined as variable
-matches_reg = lm(KgPerHE ~ comm_edit + cdfa_org + hectares + soil_quality , data = matches_filter)
+matches_reg = lm(KgPerHE ~ agroclass + cdfa_org + hectares + soil_quality , data = matches_filter) 
 summary(matches_reg)
 
 plot(matches_reg)
