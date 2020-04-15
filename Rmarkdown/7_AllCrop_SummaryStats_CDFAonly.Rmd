@@ -39,11 +39,12 @@ library(reshape2)
 #### 2. Read in full shapefile and convert to sf
 ```{r read_in_shapefiles}
 
-organics_sf = readOGR("../R_output/spatial/final_organics_data/all_years/all_years_organics.shp")
+organics_sf = read_sf("../R_output/spatial/final_organics_data/all_years/all_years_organics.shp")
+
 
 ```
 
-#### 3. Find organic crop types that have at least 5 fields/sites and 5 conventional fields of the same crop
+#### 3. Find organic crop types that have at least 10 fields/sites and 10 conventional fields of the same crop in 2017
 ```{r top_organic_crops}
 
 yr = 2017
@@ -53,12 +54,12 @@ top_crops_df = organics_sf %>%
   filter(year == yr) %>% 
   group_by(comm_dt) %>% # Group by COMM column
   summarise(total_fields = n(),
-            total_orgFields = sum(cdf_rgn),
-            total_convFields = n() - sum(cdf_rgn)) %>% # Sum the CDFA column. This tells us how much organic fields of each crop type there are
+            total_orgFields = sum(cdfa_rg),
+            total_convFields = n() - sum(cdfa_rg)) %>% # Sum the CDFA column. This tells us how much organic fields of each crop type there are
   arrange(-total_orgFields) %>% # Sort the table in descending order of number of fields per crop type
   filter(total_orgFields >= 10 & total_convFields >= 10) # Get rid of crops with fewer than ten organic fields
 
-comparison_crops = as.character(top_crops_df$comm_dt) # Create a new vector with names of crops with at least five fields
+comparison_crops = as.character(top_crops_df$comm_dt) # Create a new vector with names of crops with at least ten fields
 comparison_crops # Display in an Rmarkdown document
 ```
 
@@ -74,11 +75,11 @@ for(i in years){
        filter(year == i) %>% 
        filter(comm_dt %in% comparison_crops) %>% 
        summarise(total_fields = n(),
-                 total_hectares = round(sum(acres*0.405/N_crps_),1),
-                 avg_field_size = round(mean(acres*0.405/N_crps_),1),
-                 avg_SoilQ = mean(soil_q, na.rm = T),
+                 total_hectares = round(sum(acres*0.405/N_crops),1),
+                 avg_field_size = round(mean(acres*0.405/N_crops),1),
+                 avg_SoilQ = mean(sl_qlty, na.rm = T),
                  total_pest_app = sum(KgPstAI),
-                 avg_kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_))
+                 avg_kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crops))
      
      assign(paste0("all_",i,"_SumStats"),tmp)
      
@@ -94,13 +95,13 @@ for(i in years){
        as.data.frame() %>% 
        filter(year == i) %>% 
        filter(comm_dt %in% comparison_crops) %>% 
-       filter(cdf_rgn == "1") %>% 
+       filter(cdfa_rg == "1") %>% 
        summarise(total_fields = n(),
-                 total_hectares = round(sum(acres*0.405/N_crps_),1),
-            avg_field_size = round(mean(acres*0.405/N_crps_),1),
-            avg_SoilQ = mean(soil_q, na.rm = T),
+                 total_hectares = round(sum(acres*0.405/N_crops),1),
+            avg_field_size = round(mean(acres*0.405/N_crops),1),
+            avg_SoilQ = mean(sl_qlty, na.rm = T),
             total_pest_app = sum(KgPstAI),
-            avg_kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_))
+            avg_kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crops))
      
      assign(paste0("Organic_",i,"_SumStats"),tmp)
      
@@ -116,13 +117,13 @@ for(i in years){
        as.data.frame() %>% 
        filter(year == i) %>%
        filter(comm_dt %in% comparison_crops) %>% 
-       filter(cdf_rgn == "0") %>% 
+       filter(cdfa_rg == "0") %>% 
        summarise(total_fields = n(),
-                 total_hectares = round(sum(acres*0.405/N_crps_),1),
-            avg_field_size = round(mean(acres*0.405/N_crps_),1),
-            avg_SoilQ = mean(soil_q, na.rm = T),
+                 total_hectares = round(sum(acres*0.405/N_crops),1),
+            avg_field_size = round(mean(acres*0.405/N_crops),1),
+            avg_SoilQ = mean(sl_qlty, na.rm = T),
             total_pest_app = sum(KgPstAI),
-            avg_kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crps_))
+            avg_kg_per_hectare = sum(KgPstAI)/sum(acres*0.405/N_crops))
      
      assign(paste0("Conv_",i,"_SumStats"),tmp)
      
@@ -131,7 +132,7 @@ for(i in years){
 
 #### 7. Combine summary tables into one. Remove '#' to write output CSV
 ```{r combine_and_output}
-
+years=2013:2017
 for(i in years){
     
         tmp = rbind(
