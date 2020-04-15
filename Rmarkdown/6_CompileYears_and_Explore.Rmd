@@ -69,7 +69,7 @@ write_csv(all_years_df, "../R_output/CSV/compiled_organics1317.csv")
 #### Do the same as above then compile into single shapefile
 ```{r compile_for_shp}
 
-years = 2014:2017
+years = 2013:2017
 
 ## Read in shapefiles and make into a simple data.frame without geometry
 for(i in years){
@@ -85,6 +85,7 @@ for(i in years){
 
 
 all_years_shp <- organics_shp_2013
+years = 2014:2017
 
 for(i in years){
   
@@ -119,7 +120,7 @@ writeOGR(as(all_years_shp,"Spatial"),
 Organics per year
 ```{r orgs_per_year}
 
-org_fields_perYear = all_years %>% 
+org_fields_perYear = all_years_df %>% 
   group_by(year) %>% 
   summarise(cdfa_organics = sum(cdfa_org),
             all_organics = sum(all_org))
@@ -137,7 +138,7 @@ ggplot(org_fields_perYear,aes(x = as.factor(year),y = all_organics,fill = as.fac
 
 Field size (hectares)
 ```{r field_size}
-mean_hectares = all_years %>% 
+mean_hectares = all_years_df %>% 
   group_by(year,cdfa_org) %>% 
   summarise(mean_hectares = round(mean(hectares),2))
 
@@ -150,7 +151,7 @@ ggplot(mean_hectares,aes(x = cdfa_org,y = mean_hectares,fill=as.factor(cdfa_org)
 Soil Quality
 ```{r soilQuality}
 
-mean_hectares = all_years %>% 
+mean_hectares = all_years_df %>% 
   group_by(year,cdfa_org) %>% 
   summarise(mean_soilQ = round(mean(soil_quality),2))
 
@@ -164,7 +165,7 @@ ggplot(mean_hectares,aes(x = cdfa_org,y = mean_soilQ,fill=as.factor(cdfa_org)))+
 
 #### 6. Check out pesticide use data
 ```{r pesticide}
-explore_pst_use = all_years %>% 
+explore_pst_use = all_years_df %>% 
   group_by(cdfa_org,year) %>% 
   summarise(avg_kg_pest_ai = round(mean(KgPstAI),2), # should adjust this for number of fields
             avg_kg_ai_perHec = round(mean(KgPerHE),2))
