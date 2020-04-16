@@ -36,10 +36,12 @@ library(reshape2)
 # setwd("~/Desktop/Organics_Final/Working/R_files/Rmarkdown")
 ```
 
-#### 2. Read in full shapefile and convert to sf
+#### 2. Read in full shapefile 
 ```{r read_in_shapefiles}
 
-organics_sf = read_sf("../R_output/spatial/final_organics_data/all_years/all_years_organics.shp")
+## FYI: changing this from readOGR() to read_sf() sometimes also changes the colnames that are read in with (no clue why). Reading in with readOGR then converting to a data.frame (or sf) will prevent us from needing to change column names and will keep them consistent with other RMDs, which is my intention here. Going to change it back so they're consistent with other RMDs.
+
+organics_shp = readOGR("../R_output/spatial/final_organics_data/all_years/all_years_organics.shp")
 
 
 ```
@@ -49,7 +51,7 @@ organics_sf = read_sf("../R_output/spatial/final_organics_data/all_years/all_yea
 
 yr = 2017
 
-top_crops_df = organics_sf %>% 
+top_crops_df = organics_shp %>% 
   as.data.frame() %>% # Convert to data.frame
   filter(year == yr) %>% 
   group_by(comm_dt) %>% # Group by COMM column
@@ -70,7 +72,7 @@ years = 2013:2017
 
 for(i in years){
     
-     tmp = organics_sf %>% 
+     tmp = organics_shp %>% 
        as.data.frame() %>% 
        filter(year == i) %>% 
        filter(comm_dt %in% comparison_crops) %>% 
@@ -91,7 +93,7 @@ for(i in years){
 ```{r org_sum_stats}
 for(i in years){
     
-     tmp = organics_sf %>% 
+     tmp = organics_shp %>% 
        as.data.frame() %>% 
        filter(year == i) %>% 
        filter(comm_dt %in% comparison_crops) %>% 
@@ -113,7 +115,7 @@ for(i in years){
 ```{r conv_sum_stats}
 for(i in years){
     
-     tmp = organics_sf %>% 
+     tmp = organics_shp %>% 
        as.data.frame() %>% 
        filter(year == i) %>%
        filter(comm_dt %in% comparison_crops) %>% 
@@ -133,6 +135,7 @@ for(i in years){
 #### 7. Combine summary tables into one. Remove '#' to write output CSV
 ```{r combine_and_output}
 years=2013:2017
+
 for(i in years){
     
         tmp = rbind(
