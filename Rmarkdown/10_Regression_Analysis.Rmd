@@ -10,11 +10,10 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-Useful tutorial. There are two others in the repository folder now also
+Useful tutorial. There are two others in the repository folder now as well
 https://sejdemyr.github.io/r-tutorials/statistics/tutorial8.html
 
-
-#### Right now this is goes through the regression using 'agroclass' as the crop variable. I have also tried out 'comm_edit' and 'comm_group', which  is where some of those notes are coming from. 
+#### Right now this is goes through the regression using 'agroclass' as the crop variable. I have also tried out 'comm_edit' and 'comm_group', which is where some of those notes are coming from. 
 
 
 #### 1. Load packages, set working directory, and prevent scientific notation
@@ -34,8 +33,8 @@ $Annual~kg/H = croptype + CDFA~organic + field~size + soil~quality$
 
 #### 2. Prepare regression dataframe
 
-# Get data and make a dataframe to be used in regression analysis. 
-This is not important, it just gets rid of '-ORGANIC' from the commodity column and groups lettuce together, rather than having 'LETTUCE LEAF' and 'LETTUCE' as separate crop types. 
+# Get data and create dfs to be used in regression analysis. 
+
 ```{r get_data, echo=TRUE, message=FALSE, warning=FALSE}
 
 data = read_csv("../R_output/CSV/compiled_organics1317.csv")
@@ -43,7 +42,7 @@ data = read_csv("../R_output/CSV/compiled_organics1317.csv")
 #### Code currently just looks at 2017...not necessarily the best thing!!###
 
 ag_summary = data %>% 
-     filter(year == 2017) %>% 
+     # filter(year == 2017) %>% 
      group_by(comm_edit) %>% 
      summarise(total_fields = n(),
                organic_fields = sum(cdfa_org),
@@ -55,23 +54,25 @@ common_crops = as.factor(as.character(ag_summary$comm_edit)) #Crops with >0 fiel
 agro_classes = as.factor(as.character(data$agroclass[data$cdfa_org==1])) #Ag classes for organic 
 
 comm_regression_df = data %>% 
-  filter(year == 2017) %>% 
+  # filter(year == 2017) %>% 
   filter(soil_quality > 0 & comm_edit%in%common_crops) %>% #Soil greater >0 and for commodities defined by common_crops
   dplyr::select(permitsite,
          permittee,
          "croptype" = comm_edit,
          cdfa_org,
+         year,
          soil_quality,
          KgPstAI,
          KgPerHE,
          hectares) #Permit site based
 
 agroclass_regression_df = data %>% 
-  filter(year == 2017) %>% 
+  # filter(year == 2017) %>% 
   filter(soil_quality >0 & agroclass%in%agro_classes) %>% #Soil greater >0 and for ag classes found for organic fields
   dplyr::select(agroclass,
          comm_edit,
          cdfa_org,
+         year,
          soil_quality,
          KgPstAI,
          KgPerHE,
@@ -83,16 +84,18 @@ agroclass_regression_df = data %>%
 
 ggplot(comm_regression_df, aes(x = cdfa_org, y = soil_quality))+
   geom_point()+
-  geom_line()
+  geom_line()+
+  facet_wrap(~year)
 
 ggplot(agroclass_regression_df, aes(x = cdfa_org, y = hectares))+
   geom_point()+
-  geom_line()
+  geom_line()+
+  facet_wrap(~year)
 
 ```
 
 
-# Simple Linear Regression -- Just seeing how R is recognizing/processing covariates
+# Simple Linear Regression -- Exploring how R is recognizing/processing covariates
 ```{r SLR}
 
 ## On individual crop types
@@ -115,11 +118,11 @@ summary(simple_agroclass_reg) # Look at regression results
 ```
 
 
-# Propensity score estimation for dataset with Crop reference variable
+# Propensity score estimation for dataset using agroclass as crop variable
 ```{r estimate_scores}
 ### Currently with agro class ###
 
-propensity_logit = glm(cdfa_org ~ agroclass + soil_quality + hectares, 
+propensity_logit = glm(cdfa_org ~ agroclass + soil_quality + hectares + year, 
                        family = binomial, 
                        data = agroclass_regression_df)
 
