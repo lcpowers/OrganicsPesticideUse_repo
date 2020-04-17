@@ -1,0 +1,18 @@
+---
+title: "Claire: Re-do Regression Analysis"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#### 1. Load packages, set working directory, and prevent scientific notation
+```{r get_packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(rgdal)
+library(sf)
+library(MatchIt) ## Package with Propensity Score Matching
+options(scipen = 9999) ## Avoid scientific notation
+```

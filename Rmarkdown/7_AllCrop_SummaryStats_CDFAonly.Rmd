@@ -39,10 +39,7 @@ library(reshape2)
 #### 2. Read in full shapefile 
 ```{r read_in_shapefiles}
 
-## FYI: changing this from readOGR() to read_sf() sometimes also changes the colnames that are read in with (no clue why). Reading in with readOGR then converting to a data.frame (or sf) will prevent us from needing to change column names and will keep them consistent with other RMDs, which is my intention here. Going to change it back so they're consistent with other RMDs.
-
 organics_shp = readOGR("../R_output/spatial/final_organics_data/all_years/all_years_organics.shp")
-
 
 ```
 

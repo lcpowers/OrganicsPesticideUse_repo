@@ -18,6 +18,7 @@ https://sejdemyr.github.io/r-tutorials/statistics/tutorial8.html
 
 #### 1. Load packages, set working directory, and prevent scientific notation
 ```{r get_packages, message=FALSE, warning=FALSE}
+
 library(tidyverse)
 library(rgdal)
 library(sf)
