@@ -59,9 +59,9 @@ table(all_years_df$year)
  
 colnames(all_years_df) = c("permitsite","s_status","permittee","comm_original","agroclass","genus","family","comm_edit",
                         "acres","soil_quality","apn_org","trs_org","cdfa_org","KernComm_org","all_org","year",
-                        "KgPstAI","KgPstPr","PgArlAI","GrndAI","OtherAI","KgAiWtr","KgAWldl","KgAMmml",
-                        "KgABrds","KgAiFsh", "KgAiBes", "KgAEndS", "KgAAqSp", "KgAGrdW","KgADrft","KgARptA","acrstrt" , 
-                        "KgAInsO","KgAHrbO","KgAFngO","AInsFng","N_crops","hectares","KgPerHE")
+                        "KgPestAI","KgPestPr","KgAerialAI","GrndAI","OtherAI","KgAiWater","KgAWildlife","KgAMammal",
+                        "KgABirds","KgAiFish", "KgAiBees", "KgAEndgSp", "KgAAiqSp", "KgAGrdWat","KgADrift","KgAReptAmph","acrestreated" , 
+                        "KgAInsectOnly","KgAHerbOnly","KgAFungOnly","AiInsFng","N_crops","hectares","KgPerHE")
 
 write_csv(all_years_df, "../R_output/CSV/compiled_organics1317.csv")
 ```

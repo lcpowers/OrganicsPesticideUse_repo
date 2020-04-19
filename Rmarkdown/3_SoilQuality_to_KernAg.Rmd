@@ -69,7 +69,7 @@ ras = raster()
 extent(ras) = extent(soil_raw) 
 
 # Set raster resolution (meters)
-res(ras) = 50 
+res(ras) = 30 
 
 # Rasterize Storie Index shapefile on the SI_number attribute column
 soil_ras = rasterize(x = soil_shp, y = ras, field = "SI_number")

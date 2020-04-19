@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ---
 
 #### 1. Load packages, function, and data
-```{r load_packages}
+```{r load_packages, message=FALSE}
 library(tidyverse) # For general data wrangling and operations on dataframes
 library(rgdal) # GDAL for R. 
 library(sf) # For simple features operations in R. Allows the attribute table of a shapefile to be converted to a dataframe structure while maintaining the geometry for easy data view and operations. 
