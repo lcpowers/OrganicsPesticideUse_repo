@@ -28,16 +28,32 @@ data<-readr::read_csv("../R_output/CSV/compiled_organics1317.csv")
 ```
 
 ## Subset Data
-```{r}
+```{r data_model, message=FALSE, warning=FALSE}
 
-data_model<-data %>% 
-  dplyr::select(permitsite, permittee, year, cdfa_org, 
-                KgPerHE, KgPstAI, hectares,
-                comm_edit, soil_quality) %>% 
-  dplyr::rename(fieldsize=hectares,
-                croptype=comm_edit,
-                soilquality=soil_quality) %>% 
-  na.omit #Remove NA values (only one 2013 tree row)
+#Select crops that have at least 1 organic and conventional fields per year
+  cropfields <- data %>% 
+    group_by(comm_edit, year) %>% # Group by COMM column
+    summarise(total_fields = n(),
+              total_orgFields = sum(cdfa_org),
+              total_convFields = n() - sum(cdfa_org)) %>% # Sum the CDFA column. This tells us how much organic fields of each crop type there are
+    filter(total_orgFields >= 1 & total_convFields >= 1) %>%  # Get rid of crops with fewer than five organic/conventional fields
+    ungroup()
+  yearfields<-cropfields %>% 
+    group_by(comm_edit) %>% 
+    summarise(count=n()) %>% 
+    filter(count==5) %>% 
+    dplyr::select(comm_edit) %>% 
+    ungroup()
+
+#Subset datasets for crops/fields with at least 1 organic and 1 conventional field per year per crop
+  data_model<-right_join(data, yearfields, by="comm_edit") %>% 
+    dplyr::select(permitsite, permittee, year, cdfa_org, 
+                  KgPerHE, KgPstAI, hectares,
+                  comm_edit, soil_quality) %>% 
+    dplyr::rename(fieldsize=hectares,
+                  croptype=comm_edit,
+                  soilquality=soil_quality) 
+
 
 ```
 
@@ -104,16 +120,16 @@ Conventional fields have signficantly greater average field size and soil qualit
 Estimate propensity score with a logit model, with binary treatment status as the outcome variable and including all covariates.
 
 ```{r propensity score}
-#Currently experimenting without croptype
+
 #Propensity score model across all years
-m_ps<-glm(cdfa_org~fieldsize + soilquality,
+m_ps<-glm(cdfa_org~fieldsize + soilquality + croptype,
           data=data_model, family=binomial())
-# summary(m_ps)
+summary(m_ps)
 #Propensity score model with year as factor
-m_ps_yr<-glm(cdfa_org~fieldsize + soilquality + 
+m_ps_yr<-glm(cdfa_org~fieldsize + soilquality + croptype +
                factor(year),
           data=data_model, family=binomial())
-# summary(m_ps_yr)
+summary(m_ps_yr)
 
 #Use models to calculate propensity score per field
 prs_df <- data.frame(pr_score = predict(m_ps, type = "response"),
@@ -162,18 +178,18 @@ Starting with default matchit parameters and "nearest" neighbor method.
 mod_match <- matchit(cdfa_org ~ fieldsize + soilquality,
                      data=data_model, method = "nearest")
 
-#Matching with years factor
-mod_match_yr <- matchit(cdfa_org ~ fieldsize + soilquality +
-                          factor(year),
-                     data=data_model, method = "nearest")
+# #Matching with years factor
+# mod_match_yr <- matchit(cdfa_org ~ fieldsize + soilquality +
+#                           factor(year),
+#                      data=data_model, method = "nearest")
 
 #Examine matches
 summary(mod_match)
-summary(mod_match_yr)
-
-#Create dataframes of only matched observations
-dta_m <- match.data(mod_match)
-dta_m_yr <- match.data(mod_match_yr)
+# summary(mod_match_yr)
+# 
+# #Create dataframes of only matched observations
+# dta_m <- match.data(mod_match)
+# dta_m_yr <- match.data(mod_match_yr)
 
 ```
 
