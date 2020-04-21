@@ -1,0 +1,54 @@
+---
+title: "Claire: OLS"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#### 1. Load packages, set working directory, and prevent scientific notation
+```{r get_packages, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(rgdal)
+library(sf)
+library(MatchIt) ## Package with Propensity Score Matching
+library(MASS)
+options(scipen = 9999) ## Avoid scientific notation
+```
+
+Read in data
+```{r data}
+
+data = read_csv("../R_output/CSV/compiled_organics1317.csv")
+
+farm_stats_df = data %>% 
+  # filter(year == 2017) %>% 
+  group_by(permittee,comm_edit) %>% 
+  summarise(total_org = sum(all_org),
+            total_conv = n()-sum(all_org),
+            average_fldsize_org = round(mean(hectares[all_org == 1]),2),
+            average_fldsize_conv = round(mean(hectares[all_org == 0]),2),
+            average_soil_org = round(mean(soil_quality[all_org == 1]),2),
+            average_soil_conv = round(mean(soil_quality[all_org == 0]),2)) %>% 
+  filter(total_org>0&total_conv>0)
+
+## Combing growers across years
+
+crop_stats_df = data %>% 
+  group_by(comm_edit) %>% 
+  summarise(total_fields = n(),
+    total_org = sum(all_org),
+    total_conv = n()-sum(all_org)) %>% 
+  filter(total_fields>99 & total_org > 49)
+  
+agro_stats_df = data %>% 
+  group_by(agroclass) %>% 
+  summarise(total_fields = n(),
+    total_org = sum(all_org),
+    total_conv = n()-sum(all_org)) %>% 
+  filter(total_fields>99 & total_org > 49)
+```
+
+
