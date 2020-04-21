@@ -4,16 +4,15 @@ Soil_to_KernAg_fun = function(year){
   timestamp()
   
   ### Read in raw Kern County Agriculture shapefile ###
-  ag_raw = readOGR(paste0("../R_input/spatial/kern_AG_shp/kern",year,"/kern",year,".shp"))
-  
-  ## Put into California Teale Albers
-  ag = spTransform(ag_raw, CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs "))
+  ag = readOGR(paste0("../R_input/spatial/kern_AG_shp/kern",year,"/kern",year,".shp")) %>% 
+    spTransform(., 
+                CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs "))
   
   ## Change into simple features dataframe
   ag_sf = st_as_sf(ag) %>% 
     filter(P_STATUS == "A" & !str_detect(COMM,"UNCULTIVATED")) %>%  # Keep active permits
     mutate(AG_TRS = paste0(TOWNSHIP,RANGE,str_pad(SECTION,2,pad="0",side=c("left")))) %>% 
-    dplyr::select(PERMITTEE,PMT_SITE,COMM,S_STATUS,ACRES,AG_TRS) 
+    dplyr::select(PERMIT,PERMITTEE,PMT_SITE,COMM,S_STATUS,ACRES,AG_TRS) 
   
   ag_sf$COMM <- as.character(ag_sf$COMM)
   # ag_sf$COMM_CODE<- as.character(ag_sf$COMM_CODE)

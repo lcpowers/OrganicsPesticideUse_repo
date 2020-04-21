@@ -44,7 +44,7 @@ library(sf) # Specific operations on different versions of shapefiles in R
 library(raster)
 
 # Set working directory for For Claire's computer
-# setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
+setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown")
 
 # Access function in .R document used to join Kern Agriculture and CDFA parcel shapefiles. 
 # See the .R file for more information about the function
@@ -106,7 +106,7 @@ dir.create("../R_output/spatial/final_organics_data/")
 for(i in years){
   
   # Read in data produced above. This is the cdfa data joined to kern county parcels on APN, then spatially joined to kern ag data in the above function
-  tmp <- readOGR(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50/KernAg_CDFA_all_",i,"_B50.shp")) %>%
+   tmp <- readOGR(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50/KernAg_CDFA_all_",i,"_B50.shp")) %>%
     st_as_sf()
   
   assign(paste0("cdfa_kern_apn_",i),tmp)
@@ -114,7 +114,7 @@ for(i in years){
   
   tmp <- readOGR(paste0("../R_output/spatial/KernAg_withSoil/",i,"/KernAg_withSoil_",i,".shp")) %>%
     st_as_sf() %>%
-    dplyr::select(PMT_SITE,S_STATUS,COMM,PERMITTEE,AG_TRS)
+    dplyr::select(PERMIT,PMT_SITE,S_STATUS,COMM,PERMITTEE,AG_TRS)
 
   assign(paste0("kern_",i),tmp)
   rm(tmp)
@@ -144,10 +144,12 @@ for(i in years){
                       suffix = c(".apn",".trs"))
   
   apn_trs_organics_final = apn_trs_organics_join %>% 
-    dplyr::select("permitsite" = PMT_SITE,
+    dplyr::select("permit" = PERMIT,
+         "permitsite" = PMT_SITE,
          "s_status" = S_STATUS,
          "permittee" = PERMITTEE,
          "comm" = COMM,
+         "comm_code" = COMM_CODE,
          "agroclass" = AGROCLASS,
          "genus" = GENUS,
          "family" = FAMILY,
@@ -203,13 +205,13 @@ for(i in years){
   tmp = eval(as.name(paste0("apn_trs_orgs_",i)))
   tmp$comm_org = 0
   tmp$comm_org <- ifelse(str_detect(tmp$comm,"ORGANIC"),1,0)
+  tmp$permittee_org <- ifelse(str_detect(tmp$permittee,"ORGANIC"),1,0)
   print(sum(tmp$comm_org))
+  print(sum(tmp$permittee_org))
   
   tmp$all_organic = 0
   tmp$all_organic = ifelse(tmp$comm_org==1|tmp$trs==1|tmp$apn==1,1,0)
   print(sum(tmp$all_organic))
-  
- 
   
   # Write Output File
   writeOGR(obj = as(tmp,"Spatial"),
@@ -228,7 +230,6 @@ for(i in years){
    rm(tmp)
 
 }
-
 
 ```
 

@@ -26,11 +26,13 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   
   ####### Write data before filtering for parcels desginted as organic by CDFA APN match #######
   join = join %>% 
-    dplyr::select(PMT_SITE,
+    dplyr::select(PERMIT,
+                  PMT_SITE,
                   S_STATUS,
                   PERMITTEE,
                   "COMPANY" = company,
                   COMM,
+                  COMM_CODE,
                   "GENUS",
                   "AGROCLASS",
                   "FAMILY",

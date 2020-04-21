@@ -23,32 +23,35 @@ Read in data
 
 data = read_csv("../R_output/CSV/compiled_organics1317.csv")
 
+data$full_organic = ifelse(data$KernPermittee_org == 1,1,data$all_org)
+org_col = 'full_organic'
+
 farm_stats_df = data %>% 
   # filter(year == 2017) %>% 
-  group_by(permittee,comm_edit) %>% 
-  summarise(total_org = sum(all_org),
-            total_conv = n()-sum(all_org),
-            average_fldsize_org = round(mean(hectares[all_org == 1]),2),
-            average_fldsize_conv = round(mean(hectares[all_org == 0]),2),
-            average_soil_org = round(mean(soil_quality[all_org == 1]),2),
-            average_soil_conv = round(mean(soil_quality[all_org == 0]),2)) %>% 
+  group_by(permit,permittee) %>% 
+  summarise(total_org = sum(eval(as.name(org_col))),
+            total_conv = n()-sum(eval(as.name(org_col))),
+            average_fldsize_org = round(mean(hectares[eval(as.name(org_col)) == 1]),2),
+            average_fldsize_conv = round(mean(hectares[eval(as.name(org_col)) == 0]),2),
+            average_soil_org = round(mean(soil_quality[eval(as.name(org_col)) == 1]),2),
+            average_soil_conv = round(mean(soil_quality[eval(as.name(org_col)) == 0]),2)) %>% 
   filter(total_org>0&total_conv>0)
 
 ## Combing growers across years
-
 crop_stats_df = data %>% 
   group_by(comm_edit) %>% 
   summarise(total_fields = n(),
-    total_org = sum(all_org),
-    total_conv = n()-sum(all_org)) %>% 
-  filter(total_fields>99 & total_org > 49)
+    total_org = sum(eval(as.name(org_col))),
+    total_conv = n()-sum(eval(as.name(org_col)))) %>% 
+  filter(total_fields > 99 & total_org > 49)
   
 agro_stats_df = data %>% 
   group_by(agroclass) %>% 
   summarise(total_fields = n(),
-    total_org = sum(all_org),
-    total_conv = n()-sum(all_org)) %>% 
+    total_org = sum(eval(as.name(org_col))),
+    total_conv = n()-sum(eval(as.name(org_col)))) %>% 
   filter(total_fields>99 & total_org > 49)
+
 ```
 
 
