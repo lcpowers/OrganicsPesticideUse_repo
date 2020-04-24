@@ -167,8 +167,8 @@ ggplot(mean_hectares,aes(x = cdfa_org,y = mean_soilQ,fill=as.factor(cdfa_org)))+
 ```{r pesticide}
 explore_pst_use = all_years_df %>% 
   group_by(cdfa_org,year) %>% 
-  summarise(avg_kg_pest_ai = round(mean(KgPstAI),2), # should adjust this for number of fields
-            avg_kg_ai_perHec = round(mean(KgPerHE),2))
+  summarise(avg_kg_pest_ai = round(mean(KgPestAI),2), # should adjust this for number of fields
+            avg_kg_ai_perHec = round(mean(KgAIperHE),2))
 
 ggplot(explore_pst_use,aes(x = as.factor(year), y = avg_kg_pest_ai, fill = as.factor(year)))+
   geom_col()+
