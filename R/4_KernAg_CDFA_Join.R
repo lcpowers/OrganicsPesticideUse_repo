@@ -13,6 +13,9 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   ### Load CDFA parcel shapefile
   cdfa_prcl_shp = readOGR(paste0("../R_output/spatial/CDFA_APN_parcels/",year,"/cdfa_parcels_",year,".shp"))
   
+  ### Put into California Teale Albers (define)
+  cdfa_prcl_shp = spTransform(cdfa_prcl_shp, CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs "))
+  
   ### Create a buffer around each polygon
   cdfa_prcl_buffer = gBuffer(cdfa_prcl_shp, width = -buf_width, byid = TRUE)
   
