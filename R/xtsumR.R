@@ -43,8 +43,11 @@ XTSUM <- function(data, varname, unit) {
 
 #Read in the dataset
 df<-readr::read_csv("R_output/CSV/compiled_organics1317.csv")
-data<-df %>% dplyr::select(permitsite, comm_edit, KgPerHE, soil_quality, cdfa_org, hectares)
+data<-df %>% dplyr::select(permitsite, comm_edit, year,
+                          soil_quality, cdfa_org, hectares,
+                          KgPerHE, )
 
+#ADD IN OTHER OUTCOMES AND DIVIDE SD AT END*100 FOR TABLE
 
 #Perform xtsum function for each variable being considered in the regression, for both permit number, commodity number, and both
   #Have to perform each variable separately based on how xtsumR function created (global variable)
