@@ -32,10 +32,13 @@ Soil_to_KernAg_fun = function(year){
                            ag_sf, # Extract based on Kern Ag polygon outlines from the Kern Ag shapefile
                            fun = mean, # Find the mean value of raster cells that overlap with each polygon
                            small = TRUE, # Include mean values for small polygons
-                           weights = TRUE, # Add weights to be able to calculate weighted mean in the next step
+                           weights = TRUE, # Add weights for weighted means
                            normalizeWeights = TRUE,
-                           na.rm = T, # Ignore NAs when calculating mean values
+                           na.rm = TRUE, # Ignore NAs when calculating mean values -- BUT then need to change 0s back to NAs
                            df = TRUE) # Return results as a data.frame
+  
+  # Change '0' values to NA
+  r.vals$layer[r.vals$layer == 0] = NA
   
   ## Add the mean values to the Kern Agriculture Shapefile
   ag_slct$soil = r.vals$layer  

@@ -71,8 +71,7 @@ for(i in years){ # For each year...
   for(j in buf_width){ # And each buffer width...
   
   # Read in the joined KernAg_CDFA data...
-  tmp <- readOGR(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer",j,"/all_organics_",i,".shp")) %>% 
-  st_as_sf()
+  tmp <- read_sf(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer",j,"/all_organics_",i,".shp")) 
 
   # Assign a name
   assign(paste0("organics_",i,"_B",j),tmp)
@@ -102,7 +101,7 @@ for(i in years){
   
   join_pst$year = i
   
-  join_pst[17:37][is.na(join_pst[17:37])] <- 0
+  join_pst[21:41][is.na(join_pst[21:41])] <- 0
   
   # Assign a unique name based on the year
   assign(paste0("organics_pest_",i), join_pst)
@@ -183,22 +182,23 @@ for(i in years){
       
       
       # Merge the final multicrop_df dataframe into the tmp_orgs_df_final simple features data.frame
-      tmp_orgs_df_final = merge(tmp_orgs_df, M_status_df_final, by = 'permtst')
+      orgs_df_final = merge(tmp_orgs_df, M_status_df_final, by = 'permtst')
       
       # Remove extra dataframes that could accidentally carry into other years
       remove(M_status_df_final,prmtst_duplicates,M_status_df,tmp_orgs_df)
       
       # Convert the acres column to numeric
-      tmp_orgs_df_final$acres = as.numeric(as.character(tmp_orgs_df_final$acres))
+      orgs_df_final$acres = as.numeric(as.character(orgs_df_final$acres))
       
       # create a 'hectares' column using the 'acres' column
-      tmp_orgs_df_final$hectares = tmp_orgs_df_final$acres*0.405/tmp_orgs_df_final$N_crops_prmtst
+      orgs_df_final$hectares = orgs_df_final$acres*0.405/orgs_df_final$N_crops_prmtst
       
       # Create a kilograms of active ingredients per hectare column
-      tmp_orgs_df_final$kgperhec = tmp_orgs_df_final$KgPestAI/tmp_orgs_df_final$hectares
+      orgs_df_final$kgAIperhec = orgs_df_final$KgPestAI/orgs_df_final$hectares
+      orgs_df_final$kgPrdPerHe = orgs_df_final$KgPestPrd/orgs_df_final$hectares
       
         # Write the shapefile in to the output directory
-        writeOGR(as(tmp_orgs_df_final,"Spatial"),
+        writeOGR(as(orgs_df_final,"Spatial"),
                  paste0("../R_output/spatial/final_organics_data/",i),
                  paste0("all_organics_pest_",i),
                  driver = "ESRI Shapefile",

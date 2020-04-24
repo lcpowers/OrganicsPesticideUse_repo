@@ -17,7 +17,7 @@ library(sf)
 
 ```
 
-#### 2. Read in data for each year and compile for output CSV
+#### 2. Read in data (shapefile) for each year, and turn into df to rbind in next chunk
 ```{r data}
 
 years = 2013:2017
@@ -41,7 +41,7 @@ for(i in years){
 #### 3. Compile (rbind) years into one df
 ```{r compile_for_csv}
 
-all_years_df <- data.frame(matrix(ncol=40,nrow=0))
+all_years_df <- data.frame(matrix(ncol=44,nrow=0))
 colnames(all_years_df) <- colnames(organics_df_2013)
 
 for(i in years){
@@ -57,11 +57,11 @@ for(i in years){
 # Check
 table(all_years_df$year)
  
-colnames(all_years_df) = c("permitsite","s_status","permittee","comm_original","agroclass","genus","family","comm_edit",
-                        "acres","soil_quality","apn_org","trs_org","cdfa_org","KernComm_org","all_org","year",
-                        "KgPestAI","KgPestPr","KgAerialAI","GrndAI","OtherAI","KgAiWater","KgAWildlife","KgAMammal",
-                        "KgABirds","KgAiFish", "KgAiBees", "KgAEndgSp", "KgAAiqSp", "KgAGrdWat","KgADrift","KgAReptAmph","acrestreated" , 
-                        "KgAInsectOnly","KgAHerbOnly","KgAFungOnly","AiInsFng","N_crops","hectares","KgPerHE")
+colnames(all_years_df) = c("permitsite","permit","s_status","permittee","comm_original","comm_code","agroclass","genus","family",
+                           "comm_edit","acres","soil_quality","apn_org","trs_org","cdfa_org","KernComm_org","KernPermittee_org",
+                           "all_org","year","KgPestAI","KgPestPrd","KgAerialAI","GroundAI","OtherAI","KgAiWater","KgAiWildlife","KgAiMammal",
+                        "KgAiBirds","KgAiFish", "KgAiBees", "KgAiEndgSp", "KgAiAqSp", "KgAiGrndWat","KgAiDrift","KgAiReptAmph","acrestreated" , 
+                        "KgAInsectOnly","KgAHerbOnly","KgAFungOnly","AiInsFng","N_crops","hectares","KgAIperHE","KgPRDperHE")
 
 write_csv(all_years_df, "../R_output/CSV/compiled_organics1317.csv")
 ```
@@ -100,11 +100,11 @@ for(i in years){
 # Check
 table(all_years_shp$year)
  
-colnames(all_years_shp) = c("permitsite","s_status","permittee","comm_original","agroclass","genus","family","comm_edit",
-                        "acres","soil_quality","apn_org","trs_org","cdfa_org","KernComm_org","all_org","year",
-                        "KgPstAI","KgPstPr","PgArlAI","GrndAI","OtherAI","KgAiWtr","KgAWldl","KgAMmml",
-                        "KgABrds","KgAiFsh", "KgAiBes", "KgAEndS", "KgAAqSp", "KgAGrdW","KgADrft","KgARptA","acrstrt" , 
-                        "KgAInsO","KgAHrbO","KgAFngO","AInsFng","N_crops","hectares","KgPerHE","geometry")
+colnames(all_years_shp) = c("permitsite","permit","s_status","permittee","comm_original","comm_code","agroclass","genus","family",
+                           "comm_edit","acres","soil_quality","apn_org","trs_org","cdfa_org","KernComm_org","KernPermittee_org",
+                           "all_org","year","KgPestAI","KgPestPrd","KgAerialAI","GroundAI","OtherAI","KgAiWater","KgAiWildlife","KgAiMammal",
+                        "KgAiBirds","KgAiFish", "KgAiBees", "KgAiEndgSp", "KgAiAqSp", "KgAiGrndWat","KgAiDrift","KgAiReptAmph","acrestreated" , 
+                        "KgAInsectOnly","KgAHerbOnly","KgAFungOnly","AiInsFng","N_crops","hectares","KgAIperHE","KgPRDperHE","geometry")
 
 writeOGR(as(all_years_shp,"Spatial"),
          dsn = "../R_output/spatial/final_organics_data/all_years",

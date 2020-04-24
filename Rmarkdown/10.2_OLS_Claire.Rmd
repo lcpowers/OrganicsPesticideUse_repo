@@ -23,6 +23,17 @@ Read in data
 
 data = read_csv("../R_output/CSV/compiled_organics1317.csv")
 
+soil = data %>% 
+  group_by(all_org) %>% 
+  summarise(mean_soil = mean(soil_quality),
+            total_fiels = n())
+
+soil_fltr = data %>% 
+  filter(soil_quality>0) %>% 
+  group_by(all_org) %>% 
+  summarise(mean_soil = mean(soil_quality),
+            total_fiels = n())
+
 data$full_organic = ifelse(data$KernPermittee_org == 1,1,data$all_org)
 org_col = 'full_organic'
 
@@ -52,6 +63,25 @@ agro_stats_df = data %>%
     total_conv = n()-sum(eval(as.name(org_col)))) %>% 
   filter(total_fields>99 & total_org > 49)
 
+```
+
+```{r}
+data$permit = as.factor(data$permit)
+lm_test = lm(KgAIperHE ~ soil_quality + all_org + permit, data = data)
+
+dataNA = data
+dataNA$soil_quality[dataNA$soil_quality<1] = NA
+lm_testNA = lm(KgAIperHE ~ soil_quality + all_org + permit, data = dataNA)
+
+data_fltr = data %>% 
+  filter(!is.na(soil_quality))
+lm_test_fltr = lm(KgAIperHE ~ soil_quality + all_org + permit, data = data_fltr)
+
+table(data$year)-table(data_fltr$year)
+
+summary(lm_test)
+summary(lm_testNA)
+summary(lm_test_fltr)
 ```
 
 
