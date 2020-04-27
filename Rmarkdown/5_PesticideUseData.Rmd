@@ -34,10 +34,11 @@ library(sf)
 # setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Avoid scientific notation in dataframes
-options(scipen = 9999) 
+options(scipen = 999) 
 
 # Read in Pesticide Data 
-pest_data_raw <- read_csv("../R_input/CSV/PesticideUse/KernOrgCollapse1317.csv")
+pest_data_raw <- read_csv("../R_input/CSV/PesticideUse/KernOrgCollapse1317.csv") 
+pest_data_raw$permitsite = as.character(pest_data_raw$permitsite)
 
 # Specify years of interest
 years = 2013:2017
