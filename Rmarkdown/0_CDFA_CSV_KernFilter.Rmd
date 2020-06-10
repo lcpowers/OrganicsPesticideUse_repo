@@ -82,12 +82,13 @@ for(i in years){
   # Assign a simple, year-specific name to the dataframe. These can be used for a quick visual check within R, of the files being written to CSV.
   assign(paste0("cdfa_",i),tmp) 
   
-  write_csv(
+  write.csv(
     eval( # Evaluate what the name refers to -- In combintation these commands are telling are to grab a specific dataframe
       as.name( # Tell R that paste is a name
         paste0("cdfa_",i))), # Paste elements together
        
-    paste0("../R_output/CSV/cdfa_kernFilter/CDFA_2017_2019/cdfa_kern_",i,".csv"))
+    paste0("../R_output/CSV/cdfa_kernFilter/CDFA_2017_2019/cdfa_kern_",i,".csv"),
+    fileEncoding = "UTF-8", row.names=FALSE)
   
   # Remove the 'tmp' dataframe to ensure there will be no accidental 
   # cross over between years i.e. processing 'tmp' for the wrong year
