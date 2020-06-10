@@ -44,7 +44,7 @@ KernCoParcels <- readOGR("../R_input/spatial/Kern_Parcels_2017_Final/Kern_Parcel
 ```{r apply_function}
 
 # Specify years 
-yrs = 2013:2017
+yrs = 2013:2019
 
 # Create output directory
 dir.create("../R_output/spatial/CDFA_APN_parcels/", recursive = T)
@@ -61,13 +61,13 @@ for(i in yrs){
 
 ```
 
-#### 3. Identify PLSS Sections that contain organic parcels (the next phase of this, finding WHICH parcels are organic, is in RMD 4)
+## 3. Identify PLSS Sections that contain organic parcels (the next phase of this, finding WHICH parcels are organic, is in RMD 4)
 
-## 1) Read in Kern County Parcels that matched to CDFA records based on the APN
+### A) Read in Kern County Parcels that matched to CDFA records based on the APN
 ```{r cdfa_apn_match}
 
 # Specify years for function to be applied to
-yrs = 2013:2017
+yrs = 2013:2019
 
 ### Kern County Parcels that matched with CDFA APNs
 for(i in yrs){
@@ -83,7 +83,7 @@ for(i in yrs){
 
 ```
 
-## 2) Bring in Kern Sections shapefile
+### B) Bring in Kern Sections shapefile
 ```{r PLSS_shapefile}
 
 # Bring in Kern Sections shapefile
@@ -99,23 +99,25 @@ kern_sections_slct = kern_sections %>%
 kern_sections_slct$trs <- str_sub(kern_sections_slct$MTRS,2,9)
 ```
 
-## 3) Read in CDFA PLSS csv, join to PLSS shapefile and write output shapefile
+### C) Read in CDFA PLSS csv, join to PLSS shapefile and write output shapefile
 ```{r CDFA_trs}
 
-yrs = 2013:2017
+yrs = 2013:2019
 
-
-
+i = 2017
 for(i in yrs){
   
   outputfile=paste0("../R_output/spatial/CDFA_PLSS_sections/",i)
   dir.create(outputfile)
   
   # Read in CDFA data with the TRS codes pulled from the APN column
-  cdfa_trs_df = read_csv(paste0("../R_input/CSV/CDFA/excel_edited_PLSS/cdfa_trs_",i,".csv")) %>% 
+  cdfa_trs_df = read.csv(paste0("../R_input/CSV/CDFA/excel_edited_PLSS/cdfa_trs_",i,".csv")) %>% 
     dplyr::select("Company","t","r","s") %>% 
     filter(!is.na(t)|!is.na(r)|!is.na(s)) %>% 
     mutate(trs = paste0(t,r,s))
+  
+  # If a string in the 's' column is less than 2 digits long, pad on the left side with a 0
+  cdfa_trs_df$s <- str_pad(cdfa_trs_df$s, width=2, side="left", pad="0")
   
   # Get a count of how many times each TRS is repeated and how many unique codes there are
   cdfa_trs_summary = cdfa_trs_df %>%
@@ -152,8 +154,4 @@ for(i in yrs){
 }
 
 ```
-
-
-
-
 
