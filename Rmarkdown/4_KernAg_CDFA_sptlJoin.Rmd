@@ -54,7 +54,7 @@ source("../R/4_KernAg_CDFA_Join.R")
 #### 2. Implement the function that performs a spatial join between APN-identified CDFA parcels and Kern Agriculture parcels for specific years and desired buffer width. See notes in the following code chunk for more information about buffer widths and how 50m was determined
 ```{r implement_function, message=FALSE, warning=FALSE}
 # Years of interest
-years = 2013:2017
+years = 2013:2019
 
 # Buffer widths: In the function these are negative and reduce the CDFA field size. 
 # A larger buffer results in a more conservative spatial join between the CDFA parcels and 
@@ -95,11 +95,11 @@ for(i in years){
 #### 3. Perform spatial join between CDFA TRS-matched sections and Kern Agriculture Parcels -- Extract Ag parcels that overlap with CDFA sections AND contain the word 'organic' in the company name. 
 ```{r trs_ag_join}
 
-years = 2013:2017
+years = 2013:2019
 
 cdfa_orgs_table = matrix(ncol = 4, nrow = 5)
 colnames(cdfa_orgs_table) = c("year","apn","trs","total")
-cdfa_orgs_table[,1] <- c(2013:2017)
+cdfa_orgs_table[,1] <- c(years)
 
 dir.create("../R_output/spatial/final_organics_data/")
 
@@ -197,7 +197,7 @@ for(i in years){
 4. Identify organic fields based on Kern Ag "COMM" column
 ```{r COMM_organics}
 
-years = 2013:2017
+years = 2013:2019
 
 for(i in years){
   print(i)
@@ -232,8 +232,3 @@ for(i in years){
 }
 
 ```
-
-
-
-
-
