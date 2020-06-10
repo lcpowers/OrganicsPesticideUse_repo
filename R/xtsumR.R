@@ -62,7 +62,7 @@ data<-df %>%
                 KgAHerbOnlyperHE=KgAHerbOnly/hectares,
                 KgAFungOnlyperHE=KgAFungOnly/hectares,
                 AiInsFngperHE=AiInsFng/hectares) %>% 
-  dplyr::select(permitsite, comm_code, year,soil_quality, all_org, hectares, 
+  dplyr::select(permit, comm_code, year,soil_quality, all_org, hectares, 
                 KgAIperHE,KgPRDperHE, KgAerialAIperHE,GroundAIperHE,OtherAIperHE,
                 KgAiWaterperHE, KgAiWildlifeperHE, KgAiMammalperHE, KgAiBirdsperHE,
                 KgAiFishperHE, KgAiBeesperHE, KgAiEndgSpperHE, KgAiAqSpperHE, KgAiGrndWatperHE,
@@ -76,77 +76,77 @@ data<-df %>%
   #Have to perform each variable separately based on how xtsumR function created (global variable)
   
   #allorg
-    allorg_permit<-XTSUM(data, varname=allorg, unit=permitsite)
+    allorg_permit<-XTSUM(data, varname=allorg, unit=permit)
     allorg_comm<-XTSUM(data, varname=allorg, unit=comm_code)
   #hectares
-    hectares_permit<-XTSUM(data, varname=hectares, unit=permitsite)
+    hectares_permit<-XTSUM(data, varname=hectares, unit=permit)
     hectares_comm<-XTSUM(data, varname=hectares, unit=comm_code)
   #soilquality
-    soilquality_permit<-XTSUM(data, varname=soilquality, unit=permitsite)
+    soilquality_permit<-XTSUM(data, varname=soilquality, unit=permit)
     soilquality_comm<-XTSUM(data, varname=soilquality, unit=comm_code)
   #KgAIperHE
-    KgAIperHE_permit<-XTSUM(data, varname=KgAIperHE, unit=permitsite)
+    KgAIperHE_permit<-XTSUM(data, varname=KgAIperHE, unit=permit)
     KgAIperHE_comm<-XTSUM(data, varname=KgAIperHE, unit=comm_code)
   #KgPRDperHE
-    KgPRDperHE_permit<-XTSUM(data, varname=KgPRDperHE, unit=permitsite)
+    KgPRDperHE_permit<-XTSUM(data, varname=KgPRDperHE, unit=permit)
     KgPRDperHE_comm<-XTSUM(data, varname=KgPRDperHE, unit=comm_code)
   #KgAerialAIperHE
-    KgAerialAIperHE_permit<-XTSUM(data, varname=KgAerialAIperHE, unit=permitsite)
+    KgAerialAIperHE_permit<-XTSUM(data, varname=KgAerialAIperHE, unit=permit)
     KgAerialAIperHE_comm<-XTSUM(data, varname=KgAerialAIperHE, unit=comm_code)
   #GroundAIperHE
-    GroundAIperHE_permit<-XTSUM(data, varname=GroundAIperHE, unit=permitsite)
+    GroundAIperHE_permit<-XTSUM(data, varname=GroundAIperHE, unit=permit)
     GroundAIperHE_comm<-XTSUM(data, varname=GroundAIperHE, unit=comm_code)
   #OtherAIperHE
-    OtherAIperHE_permit<-XTSUM(data, varname=OtherAIperHE, unit=permitsite)
+    OtherAIperHE_permit<-XTSUM(data, varname=OtherAIperHE, unit=permit)
     OtherAIperHE_comm<-XTSUM(data, varname=OtherAIperHE, unit=comm_code)
   #KgAiWaterperHE
-    KgAiWaterperHE_permit<-XTSUM(data, varname=KgAiWaterperHE, unit=permitsite)
+    KgAiWaterperHE_permit<-XTSUM(data, varname=KgAiWaterperHE, unit=permit)
     KgAiWaterperHE_comm<-XTSUM(data, varname=KgAiWaterperHE, unit=comm_code)
   #KgAiWildlifeperHE
-    KgAiWildlifeperHE_permit<-XTSUM(data, varname=KgAiWildlifeperHE, unit=permitsite)
+    KgAiWildlifeperHE_permit<-XTSUM(data, varname=KgAiWildlifeperHE, unit=permit)
     KgAiWildlifeperHE_comm<-XTSUM(data, varname=KgAiWildlifeperHE, unit=comm_code)
   #KgAiMammalperHE
-    KgAiMammalperHE_permit<-XTSUM(data, varname=KgAiMammalperHE, unit=permitsite)
+    KgAiMammalperHE_permit<-XTSUM(data, varname=KgAiMammalperHE, unit=permit)
     KgAiMammalperHE_comm<-XTSUM(data, varname=KgAiMammalperHE, unit=comm_code)
   #KgAiBirdsperHE
-    KgAiBirdsperHE_permit<-XTSUM(data, varname=KgAiBirdsperHE, unit=permitsite)
+    KgAiBirdsperHE_permit<-XTSUM(data, varname=KgAiBirdsperHE, unit=permit)
     KgAiBirdsperHE_comm<-XTSUM(data, varname=KgAiBirdsperHE, unit=comm_code)
   #KgAiFishperHE
-    KgAiFishperHE_permit<-XTSUM(data, varname=KgAiFishperHE, unit=permitsite)
+    KgAiFishperHE_permit<-XTSUM(data, varname=KgAiFishperHE, unit=permit)
     KgAiFishperHE_comm<-XTSUM(data, varname=KgAiFishperHE, unit=comm_code)
   #KgAiBeesperHE
-    KgAiBeesperHE_permit<-XTSUM(data, varname=KgAiBeesperHE, unit=permitsite)
+    KgAiBeesperHE_permit<-XTSUM(data, varname=KgAiBeesperHE, unit=permit)
     KgAiBeesperHE_comm<-XTSUM(data, varname=KgAiBeesperHE, unit=comm_code)
   #KgAiEndgSpperHE
-    KgAiEndgSpperHE_permit<-XTSUM(data, varname=KgAiEndgSpperHE, unit=permitsite)
+    KgAiEndgSpperHE_permit<-XTSUM(data, varname=KgAiEndgSpperHE, unit=permit)
     KgAiEndgSpperHE_comm<-XTSUM(data, varname=KgAiEndgSpperHE, unit=comm_code)
   #KgAiAqSpperHE
-    KgAiAqSpperHE_permit<-XTSUM(data, varname=KgAiAqSpperHE, unit=permitsite)
+    KgAiAqSpperHE_permit<-XTSUM(data, varname=KgAiAqSpperHE, unit=permit)
     KgAiAqSpperHE_comm<-XTSUM(data, varname=KgAiAqSpperHE, unit=comm_code)
   #KgAiGrndWatperHE
-    KgAiGrndWatperHE_permit<-XTSUM(data, varname=KgAiGrndWatperHE, unit=permitsite)
+    KgAiGrndWatperHE_permit<-XTSUM(data, varname=KgAiGrndWatperHE, unit=permit)
     KgAiGrndWatperHE_comm<-XTSUM(data, varname=KgAiGrndWatperHE, unit=comm_code)
   #KgAiDriftperHE
-    KgAiDriftperHE_permit<-XTSUM(data, varname=KgAiDriftperHE, unit=permitsite)
+    KgAiDriftperHE_permit<-XTSUM(data, varname=KgAiDriftperHE, unit=permit)
     KgAiDriftperHE_comm<-XTSUM(data, varname=KgAiDriftperHE, unit=comm_code)
   #KgAiReptAmphperHE
-    KgAiReptAmphperHE_permit<-XTSUM(data, varname=KgAiReptAmphperHE, unit=permitsite)
+    KgAiReptAmphperHE_permit<-XTSUM(data, varname=KgAiReptAmphperHE, unit=permit)
     KgAiReptAmphperHE_comm<-XTSUM(data, varname=KgAiReptAmphperHE, unit=comm_code)
     #KgAInsectOnlyperHE
-    KgAInsectOnlyperHE_permit<-XTSUM(data, varname=KgAInsectOnlyperHE, unit=permitsite)
+    KgAInsectOnlyperHE_permit<-XTSUM(data, varname=KgAInsectOnlyperHE, unit=permit)
     KgAInsectOnlyperHE_comm<-XTSUM(data, varname=KgAInsectOnlyperHE, unit=comm_code)
     #KgAHerbOnlyperHE
-    KgAHerbOnlyperHE_permit<-XTSUM(data, varname=KgAHerbOnlyperHE, unit=permitsite)
+    KgAHerbOnlyperHE_permit<-XTSUM(data, varname=KgAHerbOnlyperHE, unit=permit)
     KgAHerbOnlyperHE_comm<-XTSUM(data, varname=KgAHerbOnlyperHE, unit=comm_code)
     #KgAFungOnlyperHE
-    KgAFungOnlyperHE_permit<-XTSUM(data, varname=KgAFungOnlyperHE, unit=permitsite)
+    KgAFungOnlyperHE_permit<-XTSUM(data, varname=KgAFungOnlyperHE, unit=permit)
     KgAFungOnlyperHE_comm<-XTSUM(data, varname=KgAFungOnlyperHE, unit=comm_code)
     #AiInsFngperHE
-    AiInsFngperHE_permit<-XTSUM(data, varname=AiInsFngperHE, unit=permitsite)
+    AiInsFngperHE_permit<-XTSUM(data, varname=AiInsFngperHE, unit=permit)
     AiInsFngperHE_comm<-XTSUM(data, varname=AiInsFngperHE, unit=comm_code)
       
 ############################################################
-#Both permitsite and comm_code at same time
+#Both permit and comm_code at same time
     #Create xtsum function for permit and commodity groups together
     XTSUM_permitcomm<- function(data, varname) {
       varname <- rlang::enquo(varname)
@@ -157,7 +157,7 @@ data<-df %>%
                          ovr.max=max(!! varname, na.rm=TRUE), 
                          ovr.N=sum(as.numeric((!is.na(!! varname)))))
       bmeans <- data %>% 
-        dplyr::group_by(permitsite, comm_code) %>% 
+        dplyr::group_by(permit, comm_code) %>% 
         dplyr::summarise(meanx=mean(!! varname, na.rm=T), 
                          t.count=sum(as.numeric(!is.na(!! varname))))
       bres <- bmeans %>% 
@@ -168,7 +168,7 @@ data<-df %>%
                          Units=sum(as.numeric(!is.na(t.count))), 
                          t.bar=mean(t.count, na.rm=TRUE))
       wdat <- data %>% 
-        dplyr::group_by(permitsite, comm_code) %>% 
+        dplyr::group_by(permit, comm_code) %>% 
         dplyr::mutate(W.x = scale(!! varname, scale=FALSE))
       wres <- wdat %>% 
         dplyr::ungroup() %>% 
@@ -228,7 +228,7 @@ data<-df %>%
     AiInsFngperHE_permitcomm<-XTSUM_permitcomm(data, varname=AiInsFngperHE)
     
 #############################################################################
-    #Both permitsite, comm_code, and year at same time
+    #Both permit, comm_code, and year at same time
     #Create xtsum function for permit and commodity and year groups together
     XTSUM_permitcommyear<- function(data, varname) {
       varname <- rlang::enquo(varname)
@@ -239,7 +239,7 @@ data<-df %>%
                          ovr.max=max(!! varname, na.rm=TRUE), 
                          ovr.N=sum(as.numeric((!is.na(!! varname)))))
       bmeans <- data %>% 
-        dplyr::group_by(permitsite, comm_code, year) %>% 
+        dplyr::group_by(permit, comm_code, year) %>% 
         dplyr::summarise(meanx=mean(!! varname, na.rm=T), 
                          t.count=sum(as.numeric(!is.na(!! varname))))
       bres <- bmeans %>% 
@@ -250,7 +250,7 @@ data<-df %>%
                          Units=sum(as.numeric(!is.na(t.count))), 
                          t.bar=mean(t.count, na.rm=TRUE))
       wdat <- data %>% 
-        dplyr::group_by(permitsite, comm_code, year) %>% 
+        dplyr::group_by(permit, comm_code, year) %>% 
         dplyr::mutate(W.x = scale(!! varname, scale=FALSE))
       wres <- wdat %>% 
         dplyr::ungroup() %>% 

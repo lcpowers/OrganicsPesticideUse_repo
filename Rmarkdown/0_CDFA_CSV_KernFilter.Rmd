@@ -23,7 +23,7 @@ The data being read in with the read_csv() function is the original CDFA data. I
 ---
 
 #### 1. Read in CSVs, filter dataframe for Kern County, and write export csv
-The data being read in with the read_csv() function is from the original CDFA data. Years 2013-2017 were seperated by tabs in the same excel (.xcls) sheet. Prior to being read in to this Rmarkdown document, each tab was converted into an individual .csv file in Excel becase R does not deal with .xcls sheets well, especially those with multiple tabs
+The data being read in with the read_csv() function is from the original CDFA data. Years 2013-2017 were seperated by tabs in the same excel (.xcls) sheet. Prior to being read in to this Rmarkdown document, each tab was converted into an individual .csv file in Excel becase R does not deal with .xcls sheets well, especially those with multiple tabs. The same was done with 2017-2019 but separately as the data was received at a later date and in a different format. Data for 2017-2019 was supplied in PDF format, was converted to excel xlsx and then csv format. Will be read in here separate.
 
 ```{r kern_filter_loop, message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -61,6 +61,41 @@ for(i in years){
   
   }
 
-head(APN_2013,5) # Below is a 5-row sampleof the complete CDFA dataframe
+
+
+###########################3
+#Adding the 2017-2019 Data
+# Specify years to be icluded in this filtering process
+years = 2017:2019
+
+# Output folder for the following for loop
+dir.create("../R_output/CSV/cdfa_kernFilter/CDFA_2017_2019/", recursive = T)
+
+# Read in CSV of APNs for each year 'i'
+for(i in years){
+  
+  # Read in specific year's CDFA CSV file
+  tmp = read_csv(paste0("../R_input/CSV/CDFA/original/CDFA_2017_2019/CDFA_",i,".csv")) %>% 
+    as.data.frame() %>% 
+    filter(`Site County` == "Kern")
+  
+  # Assign a simple, year-specific name to the dataframe. These can be used for a quick visual check within R, of the files being written to CSV.
+  assign(paste0("cdfa_",i),tmp) 
+  
+  write_csv(
+    eval( # Evaluate what the name refers to -- In combintation these commands are telling are to grab a specific dataframe
+      as.name( # Tell R that paste is a name
+        paste0("cdfa_",i))), # Paste elements together
+       
+    paste0("../R_output/CSV/cdfa_kernFilter/CDFA_2017_2019/cdfa_kern_",i,".csv"))
+  
+  # Remove the 'tmp' dataframe to ensure there will be no accidental 
+  # cross over between years i.e. processing 'tmp' for the wrong year
+  rm(tmp)
+  
+}
+
+
+
 ```
 
