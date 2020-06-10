@@ -2,30 +2,34 @@
 kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp = F){
   
   ### Load Kern County Agriculture shapefile
-  kern_ag_shp = readOGR(paste0("../R_output/spatial/KernAg_withSoil/",year,"/KernAg_withSoil_",year,".shp"))
-  
-  ### Put into California Teale Albers
-  kern_ag_shp = spTransform(kern_ag_shp, CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs "))
-  
-  ### Turn shapefile attribute table into a spatial dataframe
-  kern_ag_sf = st_as_sf(kern_ag_shp)
+  kern_ag_sf = read_sf(paste0("../R_output/spatial/KernAg_withSoil/",year,"/KernAg_withSoil_",year,".shp")) %>% 
+    st_transform(., CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs "))
   
   ### Load CDFA parcel shapefile
-  cdfa_prcl_shp = readOGR(paste0("../R_output/spatial/CDFA_APN_parcels/",year,"/cdfa_parcels_",year,".shp"))
+  cdfa_prcl_sf = read_sf(paste0("../R_output/spatial/CDFA_APN_parcels/",year,"/cdfa_parcels_",year,".shp")) %>% 
+    st_transform(., CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs ")) 
   
-  ### Put into California Teale Albers (define)
-  cdfa_prcl_shp = spTransform(cdfa_prcl_shp, CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs "))
-  
-  ### Create a buffer around each polygon
-  cdfa_prcl_buffer = gBuffer(cdfa_prcl_shp, width = -buf_width, byid = TRUE)
-  
-  ### Turn CDFA shapefile attribute table into a spatial dataframe
-  cdfa_prcl_sf = st_as_sf(cdfa_prcl_buffer)
+  # %>% 
+  #   st_buffer(., dist = -buf_width)
   
   ######### Joining data ##########
   
   ### Join the Kern County Ag and CDFA parcel spatial dataframes
-  join = st_join(kern_ag_sf, cdfa_prcl_sf, left = TRUE, largest = TRUE)
+  join = st_join(st_buffer(kern_ag_sf,-10), cdfa_prcl_sf, join = st_within) %>% 
+    filter(!is.na(cdfa))
+  
+  writeOGR(obj = as(join,"Spatial"),
+           dsn = "../R_output/scratch/",
+           layer = "st_join_within_ag10",
+           "ESRI Shapefile")
+  
+  ## 
+  
+  ## Use st_within OR
+  ## Use st_overlap and then develop a key for the names of permittees/companies
+  ## That will still keep all of those langer farms things
+  
+  
   
   ####### Write data before filtering for parcels desginted as organic by CDFA APN match #######
   join = join %>% 
