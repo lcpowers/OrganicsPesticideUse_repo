@@ -57,8 +57,6 @@ for(i in yrs){
                          kern_parcel_shp = KernCoParcels) # Shapefile to be used
 
   }
-
-
 ```
 
 ## 3. Identify PLSS Sections that contain organic parcels (the next phase of this, finding WHICH parcels are organic, is in RMD 4)
@@ -104,7 +102,6 @@ kern_sections_slct$trs <- str_sub(kern_sections_slct$MTRS,2,9)
 
 yrs = 2013:2019
 
-i = 2017
 for(i in yrs){
   
   outputfile=paste0("../R_output/spatial/CDFA_PLSS_sections/",i)
