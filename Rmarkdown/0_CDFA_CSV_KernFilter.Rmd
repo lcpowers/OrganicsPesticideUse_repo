@@ -23,7 +23,7 @@ The data being read in with the read_csv() function is the original CDFA data. I
 ---
 
 #### 1. Read in CSVs, filter dataframe for Kern County, and write export csv
-The data being read in with the read_csv() function is from the original CDFA data. Years 2013-2017 were seperated by tabs in the same excel (.xcls) sheet. Prior to being read in to this Rmarkdown document, each tab was converted into an individual .csv file in Excel becase R does not deal with .xcls sheets well, especially those with multiple tabs. The same was done with 2017-2019 but separately as the data was received at a later date and in a different format. Data for 2017-2019 was supplied in PDF format, was converted to excel xlsx and then csv format. Will be read in here separate.
+The data being read in with the read_csv() function is from the original CDFA data. Years 2013-2017 were separated by tabs in the same excel (.xls) sheet. Prior to being read in to this Rmarkdown document, each tab was converted into an individual .csv file in Excel because R does not deal with .xls sheets well, especially those with multiple tabs. The same was done with 2017-2019 but separately as the data was received at a later date and in a different format. Data for 2017-2019 was supplied in PDF format, was converted to excel xlsx and then csv format. Will be read in here separate.
 
 ```{r kern_filter_loop, message=FALSE, warning=FALSE}
 library(tidyverse)
@@ -31,8 +31,8 @@ library(tidyverse)
 # Set working directory for For Claire's computer
 setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
-# Specify years to be icluded in this filtering process
-years = 2013:2017
+# Specify years to be included in this filtering process
+years = 2013:2019
 
 # Output folder for the following for loop
 dir.create("../R_output/CSV/cdfa_kernFilter/", recursive = T)
@@ -49,7 +49,7 @@ for(i in years){
   assign(paste0("cdfa_",i),tmp) 
   
   write_csv(
-    eval( # Evaluate what the name refers to -- In combintation these commands are telling are to grab a specific dataframe
+    eval( # Evaluate what the name refers to -- In combination these commands are telling are to grab a specific dataframe
       as.name( # Tell R that paste is a name
         paste0("cdfa_",i))), # Paste elements together
        
