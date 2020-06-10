@@ -87,7 +87,7 @@ soil_ras = raster("../R_output/spatial/SoilRaster/soil_ras.tif")
 #### 4. Use function to add Storie Index raster data to Kern County Ag shapefile attribute table. Function find the mean for polygons with multiple raster values. 
 ```{r add_StorieIndex_to_AgData}
 # Define years to be evaluated
-years = 2018:2019
+years = 2013:2019
 
 dir.create("../R_output/spatial/KernAg_withSoil/")
 
