@@ -109,12 +109,14 @@ for(i in yrs){
   
   # Read in CDFA data with the TRS codes pulled from the APN column
   cdfa_trs_df = read.csv(paste0("../R_input/CSV/CDFA/excel_edited_PLSS/cdfa_trs_",i,".csv")) %>% 
-    dplyr::select("Company","t","r","s") %>% 
-    filter(!is.na(t)|!is.na(r)|!is.na(s)) %>% 
-    mutate(trs = paste0(t,r,s))
+    dplyr::select("Company","t","r","s") 
+  
+  cdfa_trs_df = filter(cdfa_trs_df,(!is.na(t)|!is.na(r)|!is.na(s)))
   
   # If a string in the 's' column is less than 2 digits long, pad on the left side with a 0
   cdfa_trs_df$s <- str_pad(cdfa_trs_df$s, width=2, side="left", pad="0")
+   
+  cdfa_trs_df$trs = paste0(cdfa_trs_df$t,cdfa_trs_df$r,cdfa_trs_df$s)
   
   # Get a count of how many times each TRS is repeated and how many unique codes there are
   cdfa_trs_summary = cdfa_trs_df %>%
