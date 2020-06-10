@@ -116,6 +116,13 @@ for(i in yrs){
   # If a string in the 's' column is less than 2 digits long, pad on the left side with a 0
   cdfa_trs_df$s <- str_pad(cdfa_trs_df$s, width=2, side="left", pad="0")
    
+  # If a string in the 's' column is less than 2 digits long, pad on the left side with a 0
+  cdfa_trs_df$t <- str_pad(cdfa_trs_df$t, width=3, side="left", pad="0")
+  
+  # If a string in the 's' column is less than 2 digits long, pad on the left side with a 0
+  cdfa_trs_df$r <- str_pad(cdfa_trs_df$r, width=3, side="left", pad="0")
+  
+  # Create the complete 'trs' column
   cdfa_trs_df$trs = paste0(cdfa_trs_df$t,cdfa_trs_df$r,cdfa_trs_df$s)
   
   # Get a count of how many times each TRS is repeated and how many unique codes there are
