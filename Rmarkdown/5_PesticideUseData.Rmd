@@ -26,7 +26,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 #### 1. Get Packages and Data
 ```{r get_packages_and_data}
-
+library(haven)
 library(tidyverse)
 library(rgdal)
 library(stringi)
@@ -37,11 +37,12 @@ library(sf)
 options(scipen = 999) 
 
 # Read in Pesticide Data 
-pest_data_raw <- read_csv("../R_input/CSV/PesticideUse/KernOrgCollapse1317.csv") 
-pest_data_raw$permitsite = as.character(pest_data_raw$permitsite)
+pest_data_raw = read_stata("../R_input/CSV/KernOrgCollapse1317.dta") %>% 
+  select(-permitsite)
+pest_data_raw$permitsite = paste0(as.character(pest_data_raw$permitno),as.character(pest_data_raw$location))
 
 # Specify years of interest
-years = 2013:2017
+years = 2013:2019
 
 # Specify buffer width being analyzed -- Buffer widths were originally implemented in the Kern Agriculture CDFA Parcel spatial join. 
 buf_width = c(50)
@@ -61,6 +62,28 @@ for(i in years){
   
   }
 
+nrow(pest_data_2013)
+n_distinct(pest_data_2013$permitsite)
+# PS_dups_13 = as.data.frame(table(pest_data_2013$permitsite)) %>% filter(Freq>1) %>% mutate(year = 13)
+
+nrow(pest_data_2014)
+n_distinct(pest_data_2014$permitsite)
+# PS_dups_14 = as.data.frame(table(pest_data_2014$permitsite)) %>% filter(Freq>1) %>% mutate(year = 14)
+
+nrow(pest_data_2015)
+n_distinct(pest_data_2015$permitsite)
+# PS_dups_15 = as.data.frame(table(pest_data_2015$permitsite)) %>% filter(Freq>1) %>% mutate(year = 15)
+
+nrow(pest_data_2016)
+n_distinct(pest_data_2016$permitsite)
+# PS_dups_16 = as.data.frame(table(pest_data_2016$permitsite)) %>% filter(Freq>1) %>% mutate(year = 16)
+
+nrow(pest_data_2017)
+n_distinct(pest_data_2017$permitsite)
+# PS_dups_17 = as.data.frame(table(pest_data_2017$permitsite)) %>% filter(Freq>1) %>% mutate(year = 17)
+
+# PS_dups = rbind(PS_dups_13,PS_dups_14,PS_dups_15,PS_dups_16,PS_dups_17)
+# colnames(PS_dups) = c("permitsite","n_dups","year")
 ```
 
 
@@ -97,8 +120,9 @@ for(i in years){
   tmp_pst = eval(as.name(paste0("pest_data_",i)))
   
   # Join the pesticide use data.frame to the 
-  # Agriculture shapefile on 'permitsite' and keep only the rows that had mathches
+  # Agriculture shapefile on 'permitsite' and keep only the rows that had matches
   join_pst = left_join(tmp_ag,tmp_pst, by = c("permtst" = "permitsite"))
+  anti_join = anti_join(tmp_pst,tmp_ag, by = c("permitsite" = "permtst"))
   
   join_pst$year = i
   
@@ -108,11 +132,49 @@ for(i in years){
   
   # Assign a unique name based on the year
   assign(paste0("organics_pest_",i), join_pst)
+  assign(paste0("pest_nomatch_",i), anti_join)
   
   # Remove the temporary data.frame to avoid errors
-  remove(tmp_pst, tmp_ag)
+  remove(tmp_pst, tmp_ag, join_pst, anti_join)
   
 }
+```
+
+
+### IGNORE FOR NOW All the stuff in this chunck was just digging into all the pesticide use data that didn't join with kern ag data on permitsite 
+```{r}
+# 
+# # Read in original Pesticide use reports from the Kern Website
+# original_PUR = read.csv("../R_input/CSV/KC17PURS.csv")
+# 
+# # Create permitsite column
+# original_PUR$permitsite = as.character(paste0(original_PUR$Permit..,original_PUR$Site.ID))
+# 
+# # Create new dataframe with all unique permitsites
+# uniquePURs = data.frame("permitsite"=unique(original_PUR$permitsite))
+# 
+# ## Compare to PUR data from Ashley
+# # ASHLEY PEST DATA versus KERN AG PEST DATA
+# matches_PURs = inner_join(pest_data_2017,uniquePURs,by="permitsite")
+# 
+# # KERN AG PEST DATA versus ASHLEY PEST DATA
+# kern_PUR_mismatch = anti_join(uniquePURs,pest_data_2017,by="permitsite")
+# 
+# # ASHLEY PEST DATA versus KERN AG PEST DATA 
+# ashley_PUR_mismatch = anti_join(pest_data_2017,uniquePURs,by="permitsite")
+# 
+# mismatches = data.frame("FromKernPUR" = sort(kern_PUR_mismatch$permitsite),
+#                            "fromKernOrgCollapseCSV" = sort(ashley_PUR_mismatch$permitsite))
+# 
+# write.csv(mismatches,"../R_output/CSV/PUR_permitsite_mismatches.csv")
+# 
+# # Try joining Kern PUR to Kern AG to see how many matches
+# # Join the pesticide use data.frame to the 
+#   # Agriculture shapefile on 'permitsite' and keep only the rows that had matches
+# 
+# KernPUR_ag_join = left_join(organics_2017_B50,uniquePURs, by = c("permtst" = "permitsite"))
+# KernPUR_ag_join_PURmismatch = anti_join(uniquePURs,organics_2017_B50, by = c("permitsite" = "permtst"))
+# KernAg_PUR_join_KernAgmismatch = anti_join(organics_2017_B50,uniquePURs,by = c("permtst" = "permitsite"))
 ```
 
 #### 5. Determine the number of crops being grown on multi-crop fields (s_status == "M") and add information to the KernAg_CDFA_pesticideUse dataframe shapefile.
@@ -183,7 +245,6 @@ for(i in years){
       # Rename columns for merge and later use
       colnames(M_status_df_final) = c("permtst","N_crops_prmtst")
       
-      
       # Merge the final multicrop_df dataframe into the tmp_orgs_df_final simple features data.frame
       orgs_df_final = merge(tmp_orgs_df, M_status_df_final, by = 'permtst')
       
@@ -200,6 +261,13 @@ for(i in years){
       orgs_df_final$kgAIperhec = orgs_df_final$KgPestAI/orgs_df_final$hectares
       orgs_df_final$kgPrdPerHe = orgs_df_final$KgPestPrd/orgs_df_final$hectares
       
+      # Remove the "permitno" and "location" columns
+      orgs_df_final = orgs_df_final %>% 
+        select(-c("permitno","location"))
+      
+      # Save in global environment
+      assign(paste0("organics_df_final_",i), orgs_df_final)
+      
         # Write the shapefile in to the output directory
         writeOGR(as(orgs_df_final,"Spatial"),
                  paste0("../R_output/spatial/final_organics_data/",i),
@@ -208,7 +276,6 @@ for(i in years){
                  overwrite_layer = TRUE)
       
 }
-
 
 ```
 
