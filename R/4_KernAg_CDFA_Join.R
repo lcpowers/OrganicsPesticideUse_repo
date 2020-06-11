@@ -18,19 +18,6 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   join = st_join(st_buffer(kern_ag_sf,-10), cdfa_prcl_sf, join = st_within) %>% 
     filter(!is.na(cdfa))
   
-  writeOGR(obj = as(join,"Spatial"),
-           dsn = "../R_output/scratch/",
-           layer = "st_join_within_ag10",
-           "ESRI Shapefile")
-  
-  ## 
-  
-  ## Use st_within OR
-  ## Use st_overlap and then develop a key for the names of permittees/companies
-  ## That will still keep all of those langer farms things
-  
-  
-  
   ####### Write data before filtering for parcels desginted as organic by CDFA APN match #######
   join = join %>% 
     dplyr::select(PERMIT,
