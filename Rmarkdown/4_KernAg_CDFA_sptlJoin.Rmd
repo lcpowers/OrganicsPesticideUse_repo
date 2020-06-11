@@ -97,7 +97,7 @@ for(i in years){
 
 years = 2013:2019
 
-cdfa_orgs_table = matrix(ncol = 4, nrow = 5)
+cdfa_orgs_table = matrix(ncol = 4, nrow = length(years))
 colnames(cdfa_orgs_table) = c("year","apn","trs","total")
 cdfa_orgs_table[,1] <- c(years)
 
