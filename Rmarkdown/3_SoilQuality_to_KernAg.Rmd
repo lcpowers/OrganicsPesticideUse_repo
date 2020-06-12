@@ -28,6 +28,7 @@ library(tidyverse) # General data processing
 library(sf) # Need to change 
 library(sp) # Need for crs 
 library(raster) # Need for rasterize() and extract() functions
+library(fasterize)
 
 # Set working directory for For Claire's computer
 # setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
@@ -40,47 +41,48 @@ source("../R/3_Soil_to_KernAg.R")
 
 Commented out because can just read in 'soil_ras.tif' at the end of the next code chunk
 ```{r prepare_StorieIndex_shapefile}
-# ## Read in Storie Index Soil Info
-# soil_raw = read_sf("../R_input/spatial/KernSoilDataBasin/KernSoilData_QGISreproj.shp")
-# 
-# ## Put into projection that makes it overlap with Kern Ag and ultimately all over spatial data
-# soil_raw = st_transform(soil_raw,"+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs") %>% 
-#   dplyr::select(StorInd) ## Filter to keep only the column with Storie Index information and geometry (Geometry stays by default unless the dataframe is switched to a basic DF and geometries are removed)
-# 
-# ## Add another column that gives a numeric value to the Storie Index soil rating. NA values given to values that were desginated NA or Not appropriate for SI rating
-# soil_sf$SI_number <- ifelse(str_detect(soil_sf$StorInd,"One"),1,
-#                             ifelse(str_detect(soil_sf$StorInd,"Two"),2,
-#                                    ifelse(str_detect(soil_sf$StorInd,"Three"),3,
-#                                           ifelse(str_detect(soil_sf$StorInd,"Four"),4,
-#                                                  ifelse(str_detect(soil_sf$StorInd,"Five"),5,
-#                                                         ifelse(str_detect(soil_sf$StorInd,"Six"),6,NA))))))
-# 
-# ## Convert soil dataframe back into a shapefile.
-# soil_shp = as(soil_sf,"Spatial")
+## Read in Storie Index Soil Info
+soil_raw = readOGR("../R_input/spatial/KernSoilDataBasin/KernSoilData_QGISreproj.shp")
+
+## Put into projection that makes it overlap with Kern Ag and ultimately all over spatial data
+soil_sf = spTransform(soil_raw,"+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs") %>%
+  st_as_sf() %>% 
+  dplyr::select(StorInd) ## Filter to keep only the column with Storie Index information and geometry (Geometry stays by default unless the dataframe is switched to a basic DF and geometries are removed)
+
+## Add another column that gives a numeric value to the Storie Index soil rating. NA values given to values that were desginated NA or Not appropriate for SI rating
+soil_sf$SI_number <- ifelse(str_detect(soil_sf$StorInd,"One"),1,
+                            ifelse(str_detect(soil_sf$StorInd,"Two"),2,
+                                   ifelse(str_detect(soil_sf$StorInd,"Three"),3,
+                                          ifelse(str_detect(soil_sf$StorInd,"Four"),4,
+                                                 ifelse(str_detect(soil_sf$StorInd,"Five"),5,
+                                                        ifelse(str_detect(soil_sf$StorInd,"Six"),6,NA))))))
+
+## Convert soil dataframe back into a shapefile.
+soil_shp = as(soil_sf,"Spatial")
 ```
 
 #### 3. Rasterize Storie Index column
 ```{r create_StorieIndex_raster}
-# # Initialize empty raster
-# ras = raster()
-# 
-# # Set the raster extent based on the soil shapefile
-# extent(ras) = extent(soil_raw)
-# 
-# # Set raster resolution (meters)
-# res(ras) = 50
-# 
-# # Rasterize Storie Index shapefile on the SI_number attribute column
-# soil_ras = rasterize(x = soil_shp, y = ras, field = "SI_number")
-# 
-# # Define the CRS again
-# crs(soil_ras) = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
-# 
-# # Save raster 
-# # dir.create("../R_output/spatial/SoilRaster/")
-# writeRaster(soil_ras, "../R_output/spatial/SoilRaster/soil_ras.tif", overwrite = T)
+# Initialize empty raster
+ras = raster()
 
-soil_ras = raster("../R_output/spatial/SoilRaster/soil_ras.tif")
+# Set the raster extent based on the soil shapefile
+extent(ras) = extent(soil_raw)
+
+# Set raster resolution (meters)
+res(ras) = 60
+
+# Rasterize Storie Index shapefile on the SI_number attribute column
+soil_ras = fasterize(soil_sf, ras, field = "SI_number")
+
+# Define the CRS again
+crs(soil_ras) = "+proj=aea +lat_1=29.5 +lat_2=45.5 +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs"
+
+# Save raster
+# dir.create("../R_output/spatial/SoilRaster/")
+writeRaster(soil_ras, "../R_output/spatial/SoilRaster/soil_ras.tif", overwrite = T)
+
+# soil_ras = raster("../R_output/spatial/SoilRaster/soil_ras.tif")
 ```
 
 #### 4. Use function to add Storie Index raster data to Kern County Ag shapefile attribute table. Function find the mean for polygons with multiple raster values. 
