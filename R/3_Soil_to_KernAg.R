@@ -4,7 +4,7 @@ Soil_to_KernAg_fun = function(year){
   timestamp()
   
   ### Read in raw Kern County Agriculture shapefile ###
-  ag = read_sf(paste0("../R_input/spatial/kern_AG_shp/kern",year,"/kern",year,".shp")) %>% 
+  ag_sf = read_sf(paste0("../R_input/spatial/kern_AG_shp/kern",year,"/kern",year,".shp")) %>% 
     st_transform(.,CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs")) %>% 
     filter(P_STATUS == "A" & !str_detect(COMM,"UNCULTIVATED")) %>%  # Keep active permits
     mutate(AG_TRS = paste0(TOWNSHIP,RANGE,str_pad(SECTION,2,pad="0",side=c("left")))) %>% 
