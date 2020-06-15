@@ -37,7 +37,7 @@ library(sf)
 options(scipen = 999) 
 
 # Read in Pesticide Data 
-pest_data_raw = read_stata("../R_input/CSV/KernOrgCollapse1317.dta") %>% 
+pest_data_raw = read_stata("../R_input/CSV/KernOrgCollapse1319.dta") %>% 
   select(-permitsite)
 pest_data_raw$permitsite = paste0(as.character(pest_data_raw$permitno),as.character(pest_data_raw$location))
 
@@ -51,7 +51,7 @@ buf_width = c(50)
 #### 2. Create pesticide use dataframes for each year
 ```{r pest_dataframes, message=FALSE}
 
-#### For loop to create dataframes of pesticide use for each year from 2013:2017
+#### For loop to create dataframes of pesticide use for each year from 2013:2019
 for(i in years){ 
   
   # Filter pesticide data year i
@@ -81,6 +81,15 @@ n_distinct(pest_data_2016$permitsite)
 nrow(pest_data_2017)
 n_distinct(pest_data_2017$permitsite)
 # PS_dups_17 = as.data.frame(table(pest_data_2017$permitsite)) %>% filter(Freq>1) %>% mutate(year = 17)
+
+nrow(pest_data_2018)
+n_distinct(pest_data_2018$permitsite)
+# PS_dups_18 = as.data.frame(table(pest_data_2018$permitsite)) %>% filter(Freq>1) %>% mutate(year = 18)
+
+nrow(pest_data_2019)
+n_distinct(pest_data_2019$permitsite)
+# PS_dups_19 = as.data.frame(table(pest_data_2019$permitsite)) %>% filter(Freq>1) %>% mutate(year = 19)
+
 
 # PS_dups = rbind(PS_dups_13,PS_dups_14,PS_dups_15,PS_dups_16,PS_dups_17)
 # colnames(PS_dups) = c("permitsite","n_dups","year")
@@ -127,7 +136,7 @@ for(i in years){
   join_pst$year = i
   
   #Replace NA in outcome variables with 0
-  col_join_pst<-colnames(join_pst)[21:41]
+  col_join_pst<-colnames(join_pst)[21:39] #Changed from 41 to 39 as only 39 columns
   join_pst<-join_pst %>% mutate_at(vars(col_join_pst), ~replace_na(., 0))
   
   # Assign a unique name based on the year
