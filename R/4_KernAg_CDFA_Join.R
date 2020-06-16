@@ -14,11 +14,10 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   
   ######### Joining data ##########
   
-  ### Join the Kern County Ag and CDFA parcel spatial dataframes
-  join = st_join(kern_ag_sf, st_buffer(cdfa_prcl_sf,-10)) %>% 
-    filter(!is.na(cdfa))
+  ### Join the Kern County Ag and CDFA parcel spatial data.frames
+  join = st_join(kern_ag_sf, st_buffer(cdfa_prcl_sf,-10))
   
-  ####### Write data before filtering for parcels desginted as organic by CDFA APN match #######
+  ####### Write data before filtering for parcels designated as organic by CDFA APN match #######
   join = join %>% 
     dplyr::select(PERMIT,
                   PMT_SITE,
