@@ -106,40 +106,41 @@ dir.create("../R_output/spatial/final_organics_data/")
 for(i in years){
   
   # Read in data produced above. This is the cdfa data joined to kern county parcels on APN, then spatially joined to kern ag data in the above function
-   tmp <- readOGR(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50/KernAg_CDFA_all_",i,"_B50.shp")) %>%
-    st_as_sf()
+   tmp <- read_sf(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50/KernAg_CDFA_all_",i,"_B50.shp"))
   
   assign(paste0("cdfa_kern_apn_",i),tmp)
   rm(tmp)
   
-  tmp <- readOGR(paste0("../R_output/spatial/KernAg_withSoil/",i,"/KernAg_withSoil_",i,".shp")) %>%
-    st_as_sf() %>%
+  tmp <- read_sf(paste0("../R_output/spatial/KernAg_withSoil/",i,"/KernAg_withSoil_",i,".shp")) %>%
     dplyr::select(PERMIT,PMT_SITE,S_STATUS,COMM,PERMITTEE,AG_TRS)
 
   assign(paste0("kern_",i),tmp)
   rm(tmp)
   
-  # Read in shaepfile of the PLSS Sections that joined to CDFA data on TRS codes. 
-  tmp <- readOGR(paste0("../R_output/spatial/CDFA_PLSS_sections/",i,"/cdfa_sections_",i,".shp")) %>% 
+  # Read in shapefile of the PLSS Sections that joined to CDFA data on TRS codes. 
+  tmp <- read_sf(paste0("../R_output/spatial/CDFA_PLSS_sections/",i,"/cdfa_sections_",i,".shp")) %>% 
     st_as_sf() %>% 
     mutate(trs_match = 1)
   
   assign(paste0("cdfa_sections_",i),tmp)
   rm(tmp)
   
+  # Join kern_ag data to CDFA sections
   cdfasection_ag_join <- st_join(eval(as.name(paste0("kern_",i))),
                       eval(as.name(paste0("cdfa_sections_",i))),
                       largest=T)
   
-  org_cdfasection_ag = cdfasection_ag_join %>% 
-  filter(str_detect(PERMITTEE,"ORGANIC") & trs_match == 1) %>% # Filter for the word 'Organic' in the permittee column
+  cdfasection_ag_join$trs_orgPermittee_match <- ifelse((str_detect(cdfasection_ag_join$PERMITTEE,"ORGANIC") & cdfasection_ag_join$trs_match == 1),1,0)
+    
+  org_cdfaSection_ag  = cdfasection_ag_join %>% 
   dplyr::select("permittee" = PERMITTEE,
                company,
-               "trs_match" = trs_match)
+               trs_match,
+               trs_orgPermittee_match)
   
   # Join TRS section data to Kern Ag/CDFA_APN data. 
   apn_trs_organics_join <- st_join(eval(as.name(paste0("cdfa_kern_apn_",i))),
-                      org_cdfasection_ag,
+                      org_cdfaSection_ag,
                       largest=T,
                       suffix = c(".apn",".trs"))
   
@@ -157,14 +158,15 @@ for(i in years){
          "acres"=ACRES,
          "soil_q"=SOILQ,
          "apn"=CDFA,
-         "trs" = trs_match)
-  
+         "trs_only" = trs_match,
+         "trs_orgPermittee" = trs_orgPermittee_match)
   
     # Replace NAs with 0s in the trs_match column
-    apn_trs_organics_final$trs[is.na(apn_trs_organics_final$trs)] = 0
+    apn_trs_organics_final$trs_only[is.na(apn_trs_organics_final$trs_only)] = 0
+    apn_trs_organics_final$trs_orgPermittee[is.na(apn_trs_organics_final$trs_orgPermittee)] = 0
   
-    # Create a binary organic column based on the apn_match and trs_match columns. If either of those indicates that the parcel is   organic then the value in the binary organic column == 1.
-    apn_trs_organics_final$cdfa_organic <- ifelse(apn_trs_organics_final$apn==1|apn_trs_organics_final$trs==1, # If APN or TRS organic
+    # Create a binary organic column based on the apn_match and trs_match columns. If either of those indicates that the parcel is organic then the value in the binary organic column == 1.
+    apn_trs_organics_final$cdfa_organic <- ifelse(apn_trs_organics_final$apn==1|apn_trs_organics_final$trs_only==1, # If APN or TRS organic
                                               1, # put a 1 in the cdfa_organic column
                                               0) # otherwise put a 0
     
@@ -185,7 +187,7 @@ for(i in years){
  
      tmp_sum <- data.frame(year = i,
                         apn = sum(apn_trs_organics_final$apn),
-                        trs = sum(apn_trs_organics_final$trs),
+                        trs_only = sum(apn_trs_organics_final$trs),
                         total = sum(apn_trs_organics_final$cdfa_organic))
   
       cdfa_orgs_table = merge(cdfa_orgs_table,tmp_sum)
@@ -210,7 +212,7 @@ for(i in years){
   print(sum(tmp$permittee_org))
   
   tmp$all_organic = 0
-  tmp$all_organic = ifelse(tmp$comm_org==1|tmp$trs==1|tmp$apn==1,1,0)
+  tmp$all_organic = ifelse(tmp$comm_org==1|tmp$trs_only==1|tmp$apn==1,1,0)
   print(sum(tmp$all_organic))
   
   # Write Output File

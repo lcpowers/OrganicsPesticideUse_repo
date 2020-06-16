@@ -37,9 +37,10 @@ library(sf)
 options(scipen = 999) 
 
 # Read in Pesticide Data 
-pest_data_raw = read_stata("../R_input/CSV/KernOrgCollapse1319.dta") %>% 
-  select(-permitsite)
-pest_data_raw$permitsite = paste0(as.character(pest_data_raw$permitno),as.character(pest_data_raw$location))
+pest_data_raw = read_stata("../R_input/dta/KernOrgCollapse1319.dta") %>% 
+  dplyr::select("permit" = permitno,
+         "site" = location,year)
+pest_data_raw$permitsite = paste0(as.character(pest_data_raw$permit),as.character(pest_data_raw$site))
 
 # Specify years of interest
 years = 2013:2019
@@ -47,6 +48,10 @@ years = 2013:2019
 # Specify buffer width being analyzed -- Buffer widths were originally implemented in the Kern Agriculture CDFA Parcel spatial join. 
 buf_width = c(50)
 ```
+
+################# Fuzzy match ideas,methods #####################
+Exact match on permit, fuzzy match on site
+- Permit is in the Ag attribute table already. To get site we can just trim off the Permit # from the permit site column OR rerun the KernAg to soil rmd with an update to keep the "site" column that we currently get rid of...
 
 #### 2. Create pesticide use dataframes for each year
 ```{r pest_dataframes, message=FALSE}
@@ -130,13 +135,15 @@ for(i in years){
   
   # Join the pesticide use data.frame to the 
   # Agriculture shapefile on 'permitsite' and keep only the rows that had matches
-  join_pst = left_join(tmp_ag,tmp_pst, by = c("permtst" = "permitsite"))
-  anti_join = anti_join(tmp_pst,tmp_ag, by = c("permitsite" = "permtst"))
+  join_pst = left_join(tmp_ag,tmp_pst, by = c("permtst" = "permitsite"), suffix = c(".ag", ".pur"))
+  
+  # To which ones don't join -- This is what we could use for the fuzzy match to then just rbind the results together?
+  anti_join = anti_join(tmp_pst,tmp_ag, by = c("permitsite" = "permtst"), suffix = c(".ag", ".pur"))
   
   join_pst$year = i
   
   #Replace NA in outcome variables with 0
-  col_join_pst<-colnames(join_pst)[21:39] #Changed from 41 to 39 as only 39 columns
+  col_join_pst<-colnames(join_pst)[21:22] #Changed to only 21 & 22
   join_pst<-join_pst %>% mutate_at(vars(col_join_pst), ~replace_na(., 0))
   
   # Assign a unique name based on the year
@@ -148,6 +155,7 @@ for(i in years){
   
 }
 ```
+
 
 
 ### IGNORE FOR NOW All the stuff in this chunck was just digging into all the pesticide use data that didn't join with kern ag data on permitsite 
@@ -267,12 +275,12 @@ for(i in years){
       orgs_df_final$hectares = orgs_df_final$acres*0.405/orgs_df_final$N_crops_prmtst
       
       # Create a kilograms of active ingredients per hectare column
-      orgs_df_final$kgAIperhec = orgs_df_final$KgPestAI/orgs_df_final$hectares
-      orgs_df_final$kgPrdPerHe = orgs_df_final$KgPestPrd/orgs_df_final$hectares
+      # orgs_df_final$kgAIperhec = orgs_df_final$KgPestAI/orgs_df_final$hectares
+      # orgs_df_final$kgPrdPerHe = orgs_df_final$KgPestPrd/orgs_df_final$hectares
       
       # Remove the "permitno" and "location" columns
-      orgs_df_final = orgs_df_final %>% 
-        select(-c("permitno","location"))
+      # orgs_df_final = orgs_df_final %>% 
+      #   select(-c("permitno","location"))
       
       # Save in global environment
       assign(paste0("organics_df_final_",i), orgs_df_final)
