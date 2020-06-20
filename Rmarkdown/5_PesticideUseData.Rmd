@@ -31,6 +31,8 @@ library(tidyverse)
 library(rgdal)
 library(stringi)
 library(sf)
+library(fuzzyjoin)
+
 # setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Avoid scientific notation in dataframes
@@ -39,7 +41,7 @@ options(scipen = 999)
 # Read in Pesticide Data 
 pest_data_raw = read_stata("../R_input/dta/KernOrgCollapse1319.dta") %>% 
   dplyr::select("permit" = permitno,
-         "site" = location,year)
+         "site" = location,year,commodity)
 pest_data_raw$permitsite = paste0(as.character(pest_data_raw$permit),as.character(pest_data_raw$site))
 
 # Specify years of interest
@@ -68,12 +70,12 @@ for(i in years){
   }
 
 nrow(pest_data_2013)
-n_distinct(pest_data_2013$permitsite)
-# PS_dups_13 = as.data.frame(table(pest_data_2013$permitsite)) %>% filter(Freq>1) %>% mutate(year = 13)
+n_distinct(pest_data_2013$permitsite,pest_data_2013$commodity)
+PS_dups_13 = as.data.frame(table(pest_data_2013$permitsite,pest_data_2013$commodity)) %>% filter(Freq>1) %>% mutate(year = 13)
 
 nrow(pest_data_2014)
 n_distinct(pest_data_2014$permitsite)
-# PS_dups_14 = as.data.frame(table(pest_data_2014$permitsite)) %>% filter(Freq>1) %>% mutate(year = 14)
+PS_dups_14 = as.data.frame(table(pest_data_2014$permitsite)) %>% filter(Freq>1) %>% mutate(year = 14)
 
 nrow(pest_data_2015)
 n_distinct(pest_data_2015$permitsite)
@@ -135,12 +137,13 @@ for(i in years){
   
   # Join the pesticide use data.frame to the 
   # Agriculture shapefile on 'permitsite' and keep only the rows that had matches
-  join_pst = inner_join(tmp_ag,tmp_pst, by = c("permtst" = "permitsite"), suffix = c(".ag", ".pur"))#Made inner_join
+  join_pst = inner_join(tmp_ag,tmp_pst, by = c("permtst" = "permitsite"), suffix = c(".ag", ".pur")) #Made inner_join
+  merge_pst = merge(tmp_ag,tmp_pst, by.x = c("permtst","comm"), by.y = c("permitsite","commodity"), suffix = c(".ag", ".pur")) #Made inner_join
   
   # Fuzzy Matching
     #Get anti_join both directions for pst and ag
       anti_join = anti_join(tmp_pst,tmp_ag, by = c("permitsite" = "permtst"), suffix = c(".pur", ".ag")) #Unmatched pesticide
-      anti_join_rev = anti_join(tmp_ag,tmp_pst, by = c("permtst"="permitsite"), suffix = c(".ag", ".pur"))#Unmatched ag
+      anti_join_rev = anti_join(tmp_ag,tmp_pst, by = c("permtst"="permitsite"), suffix = c(".ag", ".pur")) #Unmatched ag
     #Remove 1 character from pesticide site and join and both anti-joins again, on data that was left over from two anti-joins above
       anti_join_fuzzy_char1<-anti_join %>% dplyr::mutate(permitsitef1=substr(permitsite,1,nchar(permitsite)-1))#Remove one site character
       join_pst_fuzzy1<-inner_join(anti_join_rev, anti_join_fuzzy_char1, 
@@ -149,7 +152,8 @@ for(i in years){
                                   by = c("permitsitef1" = "permtst"), suffix = c(".pur", ".ag"))
       anti_join_fuzzy1_rev<-anti_join(anti_join_rev,anti_join_fuzzy_char1, 
                                       by = c("permtst"="permitsitef1"), suffix = c(".ag", ".pur"))
-    #Same proces as above but with 2 characters removed form site
+    
+      #Same process as above but with 2 characters removed form site
       anti_join_fuzzy_char2<-anti_join_fuzzy1 %>% dplyr::mutate(permitsitef2=substr(permitsite,1,nchar(permitsite)-2))
       join_pst_fuzzy2<-inner_join(anti_join_fuzzy1_rev, anti_join_fuzzy_char2, 
                                   by=c("permtst"="permitsitef2"), suffix=c(".ag", ".pur"))
@@ -187,6 +191,52 @@ for(i in years){
   
 }
 ```
+
+
+```{r}
+for(i in years){
+  
+  # Find the data.frame that was previously read in and corresponds 
+  # to year.i and buffer_width.j
+  tmp_ag = eval(as.name(paste0("organics_",i,"_B",j)))  %>% 
+    as.data.frame() %>% 
+    dplyr::select(-geometry)
+  
+  colnames(tmp_ag)[2] <- "permitsite"
+  colnames(tmp_ag)[5] <- "commodity"
+  
+  # Check to make sure all permits are 7 characters long -- need to double check this for all years
+  nchars = as.data.frame(table(nchar(tmp_ag$permit)))
+  
+  # Create a site column
+  tmp_ag$site = substr(tmp_ag$permitsite,8,nchar(tmp_ag$permitsite))
+  
+  
+  # Find the pesticide use data.frame that corresponds to pest_data_year.i
+  tmp_pst = eval(as.name(paste0("pest_data_",i)))
+  
+  # Merge the pesticide use data.frame to the Agriculture shapefile on 'permitsite' and 'commodity'
+  merged_ag_pst = merge(tmp_ag,tmp_pst, by = c("permitsite","commodity"), suffix = c(".ag", ".pur"))
+  
+  # Vector of joined permitsites
+  joined_permitsites = merged_ag_pst$permitsite
+  
+  tmp_ag_leftovers = filter(tmp_ag, !(permitsite %in% joined_permitsites))
+  tmp_pst_leftovers = filter(tmp_pst, !(permitsite %in% joined_permitsites))
+  
+  ###########################
+  leftovers_join = stringdist_inner_join(x = tmp_ag_leftovers,
+                                         y = tmp_pst_leftovers,
+                                         by = ("permitsite"), 
+                                         max_dist = 1, 
+                                         method = "osa",
+                                         #mode = "inner", 
+                                         distance_col = "dist") %>% 
+    filter(permit.x == permit.y & commodity.x == commodity.y)
+  
+}
+```
+
 
 
 
