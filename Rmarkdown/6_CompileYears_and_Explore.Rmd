@@ -25,8 +25,7 @@ years = 2013:2019
 ## Read in shapefiles and make into a simple data.frame without geometry
 for(i in years){
   
-  tmp = readOGR(paste0("../R_output/spatial/final_organics_data/",i,"/all_organics_pest_",i,".shp")) %>% 
-    st_as_sf() %>% 
+  tmp = read_sf(paste0("../R_output/spatial/final_organics_data/",i,"/all_organics_pest_",i,".shp")) %>% 
     as.data.frame() %>% 
     dplyr::select(-geometry)
   
@@ -62,10 +61,10 @@ table(all_years_df$year)
 #                            "all_org","year","KgPestAI","KgPestPrd","KgAerialAI","GroundAI","OtherAI","KgAiWater","KgAiWildlife",
 #                            "KgAiMammal","KgAiBirds","KgAiFish", "KgAiBees", "KgAiEndgSp", "KgAiAqSp",
 #                            "KgAiGrndWat","KgAiDrift","KgAiReptAmph","acrestreated" ,
-#                            "KgAInsectOnly","KgAHerbOnly","KgAFungOnly","AiInsFng","N_crops","hectares","KgAIperHE","KgPRDperHE") #old orer
+#                            "KgAInsectOnly","KgAHerbOnly","KgAFungOnly","AiInsFng","N_crops","hectares","KgAIperHE","KgPRDperHE") #old order
 
-colnames(all_years_df) = c("permitsite","permit_ag","s_status","permittee","comm_original","comm_code","agroclass","genus","family",
-                           "comm_edit","acres","soil_quality","apn_org","trs_only","trs_permitteeOrg","cdfa_org","KernComm_org","KernPermittee_org",
+colnames(all_years_df) = c("permitsite","permit","s_status","permittee","comm_original","comm_code","agroclass","genus","family",
+                           "comm_edit","acres","soil_quality","apn_org","trsOnly_org","trsPermittee_Org","cdfa_org","KernComm_org","KernPermittee_org",
                            "all_org","permit_pur","site_pur","year", "Fuzzy", "n_crops","hectares")
 
 

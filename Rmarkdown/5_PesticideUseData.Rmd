@@ -97,7 +97,6 @@ nrow(pest_data_2019)
 n_distinct(pest_data_2019$permitsite)
 # PS_dups_19 = as.data.frame(table(pest_data_2019$permitsite)) %>% filter(Freq>1) %>% mutate(year = 19)
 
-
 # PS_dups = rbind(PS_dups_13,PS_dups_14,PS_dups_15,PS_dups_16,PS_dups_17)
 # colnames(PS_dups) = c("permitsite","n_dups","year")
 ```
@@ -126,119 +125,128 @@ for(i in years){ # For each year...
 #### 4. Join pesticide data to Kern Agriculture/CDFA data by the 'permitsite' column. The 'permitsite' column is the unique identifier for each field, and is a concatenated version of the permit number and site ID. 
 ```{r join_KernAgCDFAData_to_pestData}
 
-for(i in years){
-  
-  # Find the data.frame that was previously read in and corresponds 
-  # to year.i and buffer_width.j
-  tmp_ag = eval(as.name(paste0("organics_",i,"_B",j)))
-  
-  # Find the pesticide use data.frame that corresponds to pest_data_year.i
-  tmp_pst = eval(as.name(paste0("pest_data_",i)))
-  
-  # Join the pesticide use data.frame to the 
-  # Agriculture shapefile on 'permitsite' and keep only the rows that had matches
-  join_pst = inner_join(tmp_ag,tmp_pst, by = c("permtst" = "permitsite"), suffix = c(".ag", ".pur")) #Made inner_join
-  merge_pst = merge(tmp_ag,tmp_pst, by.x = c("permtst","comm"), by.y = c("permitsite","commodity"), suffix = c(".ag", ".pur")) #Made inner_join
-  
-  # Fuzzy Matching
-    #Get anti_join both directions for pst and ag
-      anti_join = anti_join(tmp_pst,tmp_ag, by = c("permitsite" = "permtst"), suffix = c(".pur", ".ag")) #Unmatched pesticide
-      anti_join_rev = anti_join(tmp_ag,tmp_pst, by = c("permtst"="permitsite"), suffix = c(".ag", ".pur")) #Unmatched ag
-    #Remove 1 character from pesticide site and join and both anti-joins again, on data that was left over from two anti-joins above
-      anti_join_fuzzy_char1<-anti_join %>% dplyr::mutate(permitsitef1=substr(permitsite,1,nchar(permitsite)-1))#Remove one site character
-      join_pst_fuzzy1<-inner_join(anti_join_rev, anti_join_fuzzy_char1, 
-                                  by=c("permtst"="permitsitef1"), suffix=c(".ag", ".pur"))
-      anti_join_fuzzy1<-anti_join(anti_join_fuzzy_char1, anti_join_rev, 
-                                  by = c("permitsitef1" = "permtst"), suffix = c(".pur", ".ag"))
-      anti_join_fuzzy1_rev<-anti_join(anti_join_rev,anti_join_fuzzy_char1, 
-                                      by = c("permtst"="permitsitef1"), suffix = c(".ag", ".pur"))
-    
-      #Same process as above but with 2 characters removed form site
-      anti_join_fuzzy_char2<-anti_join_fuzzy1 %>% dplyr::mutate(permitsitef2=substr(permitsite,1,nchar(permitsite)-2))
-      join_pst_fuzzy2<-inner_join(anti_join_fuzzy1_rev, anti_join_fuzzy_char2, 
-                                  by=c("permtst"="permitsitef2"), suffix=c(".ag", ".pur"))
-      anti_join_fuzzy2<-anti_join(anti_join_fuzzy_char2, anti_join_fuzzy1_rev, 
-                                  by = c("permitsitef2" = "permtst"), suffix = c(".pur", ".ag"))
-      anti_join_fuzzy2_rev<-anti_join(anti_join_rev,anti_join_fuzzy_char2, 
-                                  by = c("permtst"="permitsitef2"), suffix = c(".ag", ".pur"))
-    
-    #Rbind Join_pst, Join_pst_fuzzy1 and 2; 
-      #and  anti_join_fuzzy2_rev to get the rest of the missing ag without pesticide if you want those NA values
-      #Also this does allow ag repeats to cover unique pesticide permitsites!!! Think about possible issue of double counting!!!
-        #Also this could mess with the multi-crop happening in next section!?!
-    #Adding column to show what they matched on and cleaning up so same columns
-    join_pst<-join_pst %>% dplyr::mutate(Fuzzy=0)#Zero characters removed
-    join_pst_fuzzy1<-join_pst_fuzzy1 %>% dplyr::select(-permitsite) %>% dplyr::mutate(Fuzzy=1)#1 character removed
-    join_pst_fuzzy2<-join_pst_fuzzy2 %>% dplyr::select(-permitsite, -permitsitef1) %>% dplyr::mutate(Fuzzy=2)#2 characters removed
-    anti_join_fuzzy2_rev<-anti_join_fuzzy2_rev %>% dplyr::rename(permit.ag=permit) %>% 
-      dplyr::mutate(permit.pur=NA, site=NA, year=i, Fuzzy=NA)
-    
-    #Final rbind of join and rename final not joined
-    final_join<-rbind(join_pst, join_pst_fuzzy1, join_pst_fuzzy2, anti_join_fuzzy2_rev) #Final join
-    final_anti_join<-anti_join_fuzzy2 #Final pests that did not join
-  
-  #Replace NA in outcome variables with 0 
-    #Does this make sense to keep? Currently removed
-  # col_join_pst<-colnames(final_join)[21:22] #Changed to only 21 & 22
-  # join_pst<-join_pst %>% mutate_at(vars(col_join_pst), ~replace_na(., 0))
-  
-  # Assign a unique name based on the year
-  assign(paste0("organics_pest_",i), final_join)
-  assign(paste0("pest_nomatch_",i), final_anti_join)
-  
-  # Remove the temporary data.frame to avoid errors
-  remove(tmp_pst, tmp_ag, final_join, final_anti_join)
-  
-}
+# for(i in years){
+  # 
+  # # Find the data.frame that was previously read in and corresponds 
+  # # to year.i and buffer_width.j
+  # tmp_ag = eval(as.name(paste0("organics_",i,"_B",j)))
+  # 
+  # # Find the pesticide use data.frame that corresponds to pest_data_year.i
+  # tmp_pst = eval(as.name(paste0("pest_data_",i)))
+  # 
+  # # Join the pesticide use data.frame to the 
+  # # Agriculture shapefile on 'permitsite' and keep only the rows that had matches
+  # join_pst = inner_join(tmp_ag,tmp_pst, by = c("permtst" = "permitsite"), suffix = c(".ag", ".pur")) #Made inner_join
+  # merge_pst = merge(tmp_ag,tmp_pst, by.x = c("permtst","comm"), by.y = c("permitsite","commodity"), suffix = c(".ag", ".pur")) #Made inner_join
+  # 
+  # # Fuzzy Matching
+  #   #Get anti_join both directions for pst and ag
+  #     anti_join = anti_join(tmp_pst,tmp_ag, by = c("permitsite" = "permtst"), suffix = c(".pur", ".ag")) #Unmatched pesticide
+  #     anti_join_rev = anti_join(tmp_ag,tmp_pst, by = c("permtst"="permitsite"), suffix = c(".ag", ".pur")) #Unmatched ag
+  #   #Remove 1 character from pesticide site and join and both anti-joins again, on data that was left over from two anti-joins above
+  #     anti_join_fuzzy_char1<-anti_join %>% dplyr::mutate(permitsitef1=substr(permitsite,1,nchar(permitsite)-1))#Remove one site character
+  #     join_pst_fuzzy1<-inner_join(anti_join_rev, anti_join_fuzzy_char1, 
+  #                                 by=c("permtst"="permitsitef1"), suffix=c(".ag", ".pur"))
+  #     anti_join_fuzzy1<-anti_join(anti_join_fuzzy_char1, anti_join_rev, 
+  #                                 by = c("permitsitef1" = "permtst"), suffix = c(".pur", ".ag"))
+  #     anti_join_fuzzy1_rev<-anti_join(anti_join_rev,anti_join_fuzzy_char1, 
+  #                                     by = c("permtst"="permitsitef1"), suffix = c(".ag", ".pur"))
+  #   
+  #     #Same process as above but with 2 characters removed form site
+  #     # anti_join_fuzzy_char2<-anti_join_fuzzy1 %>% dplyr::mutate(permitsitef2=substr(permitsite,1,nchar(permitsite)-2))
+  #     # join_pst_fuzzy2<-inner_join(anti_join_fuzzy1_rev, anti_join_fuzzy_char2, 
+  #     #                             by=c("permtst"="permitsitef2"), suffix=c(".ag", ".pur"))
+  #     # anti_join_fuzzy2<-anti_join(anti_join_fuzzy_char2, anti_join_fuzzy1_rev, 
+  #     #                             by = c("permitsitef2" = "permtst"), suffix = c(".pur", ".ag"))
+  #     # anti_join_fuzzy2_rev<-anti_join(anti_join_rev,anti_join_fuzzy_char2, 
+  #     #                             by = c("permtst"="permitsitef2"), suffix = c(".ag", ".pur"))
+  #   
+  #   #Rbind Join_pst, Join_pst_fuzzy1 and 2; 
+  #     #and  anti_join_fuzzy2_rev to get the rest of the missing ag without pesticide if you want those NA values
+  #     #Also this does allow ag repeats to cover unique pesticide permitsites!!! Think about possible issue of double counting!!!
+  #       #Also this could mess with the multi-crop happening in next section!?!
+  #   #Adding column to show what they matched on and cleaning up so same columns
+  #   join_pst<-join_pst %>% dplyr::mutate(Fuzzy=0)#Zero characters removed
+  #   join_pst_fuzzy1<-join_pst_fuzzy1 %>% dplyr::select(-permitsite) %>% dplyr::mutate(Fuzzy=1)#1 character removed
+  #   join_pst_fuzzy2<-join_pst_fuzzy2 %>% dplyr::select(-permitsite, -permitsitef1) %>% dplyr::mutate(Fuzzy=2)#2 characters removed
+  #   anti_join_fuzzy2_rev<-anti_join_fuzzy2_rev %>% dplyr::rename(permit.ag=permit) %>% 
+  #     dplyr::mutate(permit.pur=NA, site=NA, year=i, Fuzzy=NA)
+  #   
+  #   #Final rbind of join and rename final not joined
+  #   final_join<-rbind(join_pst, join_pst_fuzzy1, join_pst_fuzzy2, anti_join_fuzzy2_rev) #Final join
+  #   final_anti_join<-anti_join_fuzzy2 #Final pests that did not join
+  # 
+  # #Replace NA in outcome variables with 0 
+  #   #Does this make sense to keep? Currently removed
+  # # col_join_pst<-colnames(final_join)[21:22] #Changed to only 21 & 22
+  # # join_pst<-join_pst %>% mutate_at(vars(col_join_pst), ~replace_na(., 0))
+  # 
+  # # Assign a unique name based on the year
+  # assign(paste0("organics_pest_",i), final_join)
+  # assign(paste0("pest_nomatch_",i), final_anti_join)
+  # 
+  # # Remove the temporary data.frame to avoid errors
+  # remove(tmp_pst, tmp_ag, final_join, final_anti_join)
+  # 
+# }
 ```
 
 
+#### 4. Join pesticide data to Kern Agriculture/CDFA data by the 'permitsite' column. The 'permitsite' column is the unique identifier for each field, and is a concatenated version of the permit number and site ID. 
 ```{r}
 for(i in years){
   
   # Find the data.frame that was previously read in and corresponds 
   # to year.i and buffer_width.j
   tmp_ag = eval(as.name(paste0("organics_",i,"_B",j)))  %>% 
-    as.data.frame() %>% 
-    dplyr::select(-geometry)
+    as.data.frame() 
   
   colnames(tmp_ag)[2] <- "permitsite"
   colnames(tmp_ag)[5] <- "commodity"
   
-  # Check to make sure all permits are 7 characters long -- need to double check this for all years
-  nchars = as.data.frame(table(nchar(tmp_ag$permit)))
+  # Check to make sure all permits are 7 characters long -- check all years in RMD 6 and true: all permits = 7 characters long
+  # nchars = as.data.frame(table(nchar(tmp_ag$permit)))
   
   # Create a site column
   tmp_ag$site = substr(tmp_ag$permitsite,8,nchar(tmp_ag$permitsite))
   
-  
   # Find the pesticide use data.frame that corresponds to pest_data_year.i
   tmp_pst = eval(as.name(paste0("pest_data_",i)))
   
-  # Merge the pesticide use data.frame to the Agriculture shapefile on 'permitsite' and 'commodity'
-  merged_ag_pst = merge(tmp_ag,tmp_pst, by = c("permitsite","commodity"), suffix = c(".ag", ".pur"))
+  # Left join the pesticide use data.frame to the Agriculture shapefile on 'permitsite' and 'commodity' -- use this to data.frame to filter out fuzyz joins
+  left_joined_ag_pst = left_join(tmp_ag,tmp_pst, by = c("permitsite","commodity"), suffix = c(".ag", ".pur"))
+  
+  # Inner join to find all the kern ag rows and PUR rows that don't join
+  inner_joined_ag_pst = inner_join(tmp_ag,tmp_pst, by = c("permitsite","commodity"), suffix = c(".ag", ".pur"))
   
   # Vector of joined permitsites
-  joined_permitsites = merged_ag_pst$permitsite
+  joined_permitsites = inner_joined_ag_pst$permitsite
   
+  # Get the ag and pest rows that didn't join
   tmp_ag_leftovers = filter(tmp_ag, !(permitsite %in% joined_permitsites))
   tmp_pst_leftovers = filter(tmp_pst, !(permitsite %in% joined_permitsites))
   
-  ###########################
-  leftovers_join = stringdist_inner_join(x = tmp_ag_leftovers,
+  ########################### Try fuzzy join on ag and PUR rows that didn't join: Exact match on permit and Comm, fuzzy match on site
+  fuzzy_join = stringdist_inner_join(x = tmp_ag_leftovers,
                                          y = tmp_pst_leftovers,
-                                         by = ("permitsite"), 
+                                         by = ("site"), 
                                          max_dist = 1, 
-                                         method = "osa",
                                          #mode = "inner", 
-                                         distance_col = "dist") %>% 
-    filter(permit.x == permit.y & commodity.x == commodity.y)
+                                         distance_col = "dist") %>%  # Join the leftovers rows based on permitsite
+    filter(permit.x == permit.y & commodity.x == commodity.y) # And get rid of any that don't have the same commodity or permit: 
+  
+  # Get Ag permitsites that joined in fuzzy join
+  fuzzy_permitsites = unique(fuzzy_join$permitsite.x)
+  
+  # Filter out fuzzy permitsites from the Left Joined Ag Pest data
+  final_joined_ag_pst = left_joined_ag_pst %>% 
+    filter(!(permitsite %in% fuzzy_permitsites))
+  
+  # Assign a unique name based on the year
+  assign(paste0("organics_pest_",i), final_joined_ag_pst)
   
 }
 ```
-
-
-
 
 ### IGNORE FOR NOW All the stuff in this chunck was just digging into all the pesticide use data that didn't join with kern ag data on permitsite 
 ```{r}
@@ -284,23 +292,23 @@ for(i in years){
   tmp_orgs_df = eval(as.name(paste0("organics_pest_",i)))
       
   # Turn the kernAg_CDFA_pest shapefile into a simple features (spatial) data.frame
-      M_status_df = st_as_sf(tmp_orgs_df) %>% 
+      M_status_df = tmp_orgs_df %>% 
         # Turn into basic data.frame to remove spatial references
         as.data.frame() %>% 
         # Select columns relevant to dealing with M fields
-        dplyr::select(permtst,s_stats)
+        dplyr::select(permitsite,s_stats)
   
       # Create a new column of permitsites with the last character trimmed from each 
       # 'permitsite' string that correspond to a field with an "M" in the "S_STATUS" column.
 
       # For rows with "M" in column "S_STATUS"
-      M_status_df$permtst_trim1 = ifelse(M_status_df$s_stats == "M", 
+      M_status_df$permitsite_trim1 = ifelse(M_status_df$s_stats == "M", 
           
         # Trim the last character off the 'permitsite' string
-        strtrim(M_status_df$permtst,width=nchar(M_status_df$permtst)-1),
+        strtrim(M_status_df$permitsite,width=nchar(M_status_df$permitsite)-1),
     
         # Leave other rows alone
-        M_status_df$permtst)
+        M_status_df$permitsite)
     
       
       # Create another new column from the original "permitsite" field with only the last character 
@@ -308,12 +316,12 @@ for(i in years){
       # '_trim1' + '_trim2' should be identical to the original 'permitsite' string.  
       
       # If the value in 'S_STATUS' == M
-      M_status_df$permtst_trim2 = ifelse(M_status_df$s_stats == "M",
+      M_status_df$permitsite_trim2 = ifelse(M_status_df$s_stats == "M",
                                      
            # Grab the last character in the 'permitsite' string
-           substr(x = M_status_df$permtst,
-           start = nchar(M_status_df$permtst),
-           stop = nchar(M_status_df$permtst)), 
+           substr(x = M_status_df$permitsite,
+           start = nchar(M_status_df$permitsite),
+           stop = nchar(M_status_df$permitsite)), 
         
            # Otherwise make equal to NA
            NA)
@@ -325,7 +333,7 @@ for(i in years){
       # of an otherwise identical 'permitsite' string. With the last character trimmed off of those strings, 
       # we can determine the number of crops in the multi-crop fields based on the number of duplicate
       # permitsites in the 'permitsite_trim1' column.
-      prmtst_duplicates = as.data.frame(table(M_status_df$permtst_trim1))
+      prmtst_duplicates = as.data.frame(table(M_status_df$permitsite_trim1))
       
       
       # Rename columns from generic names given by table() function
@@ -336,16 +344,16 @@ for(i in years){
       # crops are in each individual field. 
       M_status_df_final = merge(M_status_df, 
                                  prmtst_duplicates, 
-                                 by.x="permtst_trim1", 
+                                 by.x="permitsite_trim1", 
                                  by.y="permitsite", 
                                  type = "right") %>% 
-        dplyr::select(permtst,n)
+        dplyr::select(permitsite,n)
       
       # Rename columns for merge and later use
-      colnames(M_status_df_final) = c("permtst","N_crops_prmtst")
+      colnames(M_status_df_final) = c("permitsite","N_crops_prmtst")
       
       # Merge the final multicrop_df dataframe into the tmp_orgs_df_final simple features data.frame
-      orgs_df_final = merge(tmp_orgs_df, M_status_df_final, by = 'permtst')
+      orgs_df_final = merge(tmp_orgs_df, M_status_df_final, by = 'permitsite')
       
       # Remove extra dataframes that could accidentally carry into other years
       remove(M_status_df_final,prmtst_duplicates,M_status_df,tmp_orgs_df)
@@ -368,12 +376,12 @@ for(i in years){
       assign(paste0("organics_df_final_",i), orgs_df_final)
       
         # Write the shapefile in to the output directory
-        writeOGR(as(orgs_df_final,"Spatial"),
+        writeOGR(as(st_as_sf(orgs_df_final),"Spatial"),
                  paste0("../R_output/spatial/final_organics_data/",i),
                  paste0("all_organics_pest_",i),
                  driver = "ESRI Shapefile",
                  overwrite_layer = TRUE)
-      
+        
 }
 
 ```
