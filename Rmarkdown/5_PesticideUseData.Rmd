@@ -71,30 +71,30 @@ for(i in years){
 
 nrow(pest_data_2013)
 n_distinct(pest_data_2013$permitsite,pest_data_2013$commodity)
-PS_dups_13 = as.data.frame(table(pest_data_2013$permitsite,pest_data_2013$commodity)) %>% filter(Freq>1) %>% mutate(year = 13)
+# PS_dups_13 = as.data.frame(table(pest_data_2013$permitsite,pest_data_2013$commodity)) %>% filter(Freq>1) %>% mutate(year = 13)
 
 nrow(pest_data_2014)
-n_distinct(pest_data_2014$permitsite)
-PS_dups_14 = as.data.frame(table(pest_data_2014$permitsite)) %>% filter(Freq>1) %>% mutate(year = 14)
+n_distinct(pest_data_2014$permitsite, pest_data_2014$commodity)
+# PS_dups_14 = as.data.frame(table(pest_data_2014$permitsite, pest_data_2014$commodity)) %>% filter(Freq>1) %>% mutate(year = 14)
 
 nrow(pest_data_2015)
-n_distinct(pest_data_2015$permitsite)
+n_distinct(pest_data_2015$permitsite,pest_data_2015$commodity)
 # PS_dups_15 = as.data.frame(table(pest_data_2015$permitsite)) %>% filter(Freq>1) %>% mutate(year = 15)
 
 nrow(pest_data_2016)
-n_distinct(pest_data_2016$permitsite)
+n_distinct(pest_data_2016$permitsite,pest_data_2016$commodity)
 # PS_dups_16 = as.data.frame(table(pest_data_2016$permitsite)) %>% filter(Freq>1) %>% mutate(year = 16)
 
 nrow(pest_data_2017)
-n_distinct(pest_data_2017$permitsite)
+n_distinct(pest_data_2017$permitsite,pest_data_2017$commodity)
 # PS_dups_17 = as.data.frame(table(pest_data_2017$permitsite)) %>% filter(Freq>1) %>% mutate(year = 17)
 
 nrow(pest_data_2018)
-n_distinct(pest_data_2018$permitsite)
+n_distinct(pest_data_2018$permitsite,pest_data_2018$commodity)
 # PS_dups_18 = as.data.frame(table(pest_data_2018$permitsite)) %>% filter(Freq>1) %>% mutate(year = 18)
 
 nrow(pest_data_2019)
-n_distinct(pest_data_2019$permitsite)
+n_distinct(pest_data_2019$permitsite,pest_data_2019$commodity)
 # PS_dups_19 = as.data.frame(table(pest_data_2019$permitsite)) %>% filter(Freq>1) %>% mutate(year = 19)
 
 # PS_dups = rbind(PS_dups_13,PS_dups_14,PS_dups_15,PS_dups_16,PS_dups_17)
@@ -230,10 +230,11 @@ for(i in years){
   fuzzy_join = stringdist_inner_join(x = tmp_ag_leftovers,
                                          y = tmp_pst_leftovers,
                                          by = ("site"), 
-                                         max_dist = 1, 
+                                         max_dist = 2, 
                                          #mode = "inner", 
                                          distance_col = "dist") %>%  # Join the leftovers rows based on permitsite
     filter(permit.x == permit.y & commodity.x == commodity.y) # And get rid of any that don't have the same commodity or permit: 
+
   
   # Get Ag permitsites that joined in fuzzy join
   fuzzy_permitsites = unique(fuzzy_join$permitsite.x)
