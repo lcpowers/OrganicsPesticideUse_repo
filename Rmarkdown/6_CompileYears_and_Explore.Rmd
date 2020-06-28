@@ -37,7 +37,7 @@ for(i in years){
 
 ```
 
-#### 3. Compile (rbind) years into one df
+#### 3. CSV OUTPUT: Compile (rbind) years into one df
 ```{r compile_for_csv}
 
 all_years_df <- data.frame(matrix(ncol=ncol(organics_df_2013),nrow=0))

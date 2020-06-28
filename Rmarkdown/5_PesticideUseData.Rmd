@@ -39,10 +39,8 @@ library(fuzzyjoin)
 options(scipen = 999) 
 
 # Read in Pesticide Data 
-pest_data_raw = read_stata("../R_input/dta/KernOrgCollapse1319.dta") %>% 
-  dplyr::select("permit" = permitno,
-         "site" = location,year,commodity)
-pest_data_raw$permitsite = paste0(as.character(pest_data_raw$permit),as.character(pest_data_raw$site))
+pest_data_raw = read_dta("../R_input/dta/KernFieldCrops1319.dta") %>% 
+  as.data.frame()
 
 # Specify years of interest
 years = 2013:2019
@@ -106,12 +104,15 @@ n_distinct(pest_data_2019$permitsite,pest_data_2019$commodity)
 ```{r get_kernAg}
 
 # Read in KernAg_CDFA (joined) shapefile with appropriate buffer and convert to spatial dataframe
+# Also fixes the commodity column in '18 and '19 where the word "ORGANIC" is truncated in some cells, which effects the permitsite/comm join in the following code chunk
+
 for(i in years){ # For each year...
   for(j in buf_width){ # And each buffer width...
   
   # Read in the joined KernAg_CDFA data...
   tmp <- read_sf(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer",j,"/all_organics_",i,".shp")) 
 
+  
   # Assign a name
   assign(paste0("organics_",i,"_B",j),tmp)
   
@@ -119,76 +120,18 @@ for(i in years){ # For each year...
     }
 }
 
-```
 
+organics_2018_B50$comm = as.character(organics_2018_B50$comm)
+organics_2018_B50 <- separate(organics_2018_B50,comm,into = c("comm","suf"),sep = "-")
+organics_2018_B50$suf = ifelse(str_detect(string = organics_2018_B50$suf, pattern = "OR"), "ORGANIC", organics_2018_B50$suf)
+organics_2018_B50$comm = ifelse(!is.na(organics_2018_B50$suf),paste0(organics_2018_B50$comm,"-",organics_2018_B50$suf),organics_2018_B50$comm)
+organics_2018_B50 = dplyr::select(organics_2018_B50, -suf)
 
-#### 4. Join pesticide data to Kern Agriculture/CDFA data by the 'permitsite' column. The 'permitsite' column is the unique identifier for each field, and is a concatenated version of the permit number and site ID. 
-```{r join_KernAgCDFAData_to_pestData}
-
-# for(i in years){
-  # 
-  # # Find the data.frame that was previously read in and corresponds 
-  # # to year.i and buffer_width.j
-  # tmp_ag = eval(as.name(paste0("organics_",i,"_B",j)))
-  # 
-  # # Find the pesticide use data.frame that corresponds to pest_data_year.i
-  # tmp_pst = eval(as.name(paste0("pest_data_",i)))
-  # 
-  # # Join the pesticide use data.frame to the 
-  # # Agriculture shapefile on 'permitsite' and keep only the rows that had matches
-  # join_pst = inner_join(tmp_ag,tmp_pst, by = c("permtst" = "permitsite"), suffix = c(".ag", ".pur")) #Made inner_join
-  # merge_pst = merge(tmp_ag,tmp_pst, by.x = c("permtst","comm"), by.y = c("permitsite","commodity"), suffix = c(".ag", ".pur")) #Made inner_join
-  # 
-  # # Fuzzy Matching
-  #   #Get anti_join both directions for pst and ag
-  #     anti_join = anti_join(tmp_pst,tmp_ag, by = c("permitsite" = "permtst"), suffix = c(".pur", ".ag")) #Unmatched pesticide
-  #     anti_join_rev = anti_join(tmp_ag,tmp_pst, by = c("permtst"="permitsite"), suffix = c(".ag", ".pur")) #Unmatched ag
-  #   #Remove 1 character from pesticide site and join and both anti-joins again, on data that was left over from two anti-joins above
-  #     anti_join_fuzzy_char1<-anti_join %>% dplyr::mutate(permitsitef1=substr(permitsite,1,nchar(permitsite)-1))#Remove one site character
-  #     join_pst_fuzzy1<-inner_join(anti_join_rev, anti_join_fuzzy_char1, 
-  #                                 by=c("permtst"="permitsitef1"), suffix=c(".ag", ".pur"))
-  #     anti_join_fuzzy1<-anti_join(anti_join_fuzzy_char1, anti_join_rev, 
-  #                                 by = c("permitsitef1" = "permtst"), suffix = c(".pur", ".ag"))
-  #     anti_join_fuzzy1_rev<-anti_join(anti_join_rev,anti_join_fuzzy_char1, 
-  #                                     by = c("permtst"="permitsitef1"), suffix = c(".ag", ".pur"))
-  #   
-  #     #Same process as above but with 2 characters removed form site
-  #     # anti_join_fuzzy_char2<-anti_join_fuzzy1 %>% dplyr::mutate(permitsitef2=substr(permitsite,1,nchar(permitsite)-2))
-  #     # join_pst_fuzzy2<-inner_join(anti_join_fuzzy1_rev, anti_join_fuzzy_char2, 
-  #     #                             by=c("permtst"="permitsitef2"), suffix=c(".ag", ".pur"))
-  #     # anti_join_fuzzy2<-anti_join(anti_join_fuzzy_char2, anti_join_fuzzy1_rev, 
-  #     #                             by = c("permitsitef2" = "permtst"), suffix = c(".pur", ".ag"))
-  #     # anti_join_fuzzy2_rev<-anti_join(anti_join_rev,anti_join_fuzzy_char2, 
-  #     #                             by = c("permtst"="permitsitef2"), suffix = c(".ag", ".pur"))
-  #   
-  #   #Rbind Join_pst, Join_pst_fuzzy1 and 2; 
-  #     #and  anti_join_fuzzy2_rev to get the rest of the missing ag without pesticide if you want those NA values
-  #     #Also this does allow ag repeats to cover unique pesticide permitsites!!! Think about possible issue of double counting!!!
-  #       #Also this could mess with the multi-crop happening in next section!?!
-  #   #Adding column to show what they matched on and cleaning up so same columns
-  #   join_pst<-join_pst %>% dplyr::mutate(Fuzzy=0)#Zero characters removed
-  #   join_pst_fuzzy1<-join_pst_fuzzy1 %>% dplyr::select(-permitsite) %>% dplyr::mutate(Fuzzy=1)#1 character removed
-  #   join_pst_fuzzy2<-join_pst_fuzzy2 %>% dplyr::select(-permitsite, -permitsitef1) %>% dplyr::mutate(Fuzzy=2)#2 characters removed
-  #   anti_join_fuzzy2_rev<-anti_join_fuzzy2_rev %>% dplyr::rename(permit.ag=permit) %>% 
-  #     dplyr::mutate(permit.pur=NA, site=NA, year=i, Fuzzy=NA)
-  #   
-  #   #Final rbind of join and rename final not joined
-  #   final_join<-rbind(join_pst, join_pst_fuzzy1, join_pst_fuzzy2, anti_join_fuzzy2_rev) #Final join
-  #   final_anti_join<-anti_join_fuzzy2 #Final pests that did not join
-  # 
-  # #Replace NA in outcome variables with 0 
-  #   #Does this make sense to keep? Currently removed
-  # # col_join_pst<-colnames(final_join)[21:22] #Changed to only 21 & 22
-  # # join_pst<-join_pst %>% mutate_at(vars(col_join_pst), ~replace_na(., 0))
-  # 
-  # # Assign a unique name based on the year
-  # assign(paste0("organics_pest_",i), final_join)
-  # assign(paste0("pest_nomatch_",i), final_anti_join)
-  # 
-  # # Remove the temporary data.frame to avoid errors
-  # remove(tmp_pst, tmp_ag, final_join, final_anti_join)
-  # 
-# }
+organics_2019_B50$comm = as.character(organics_2019_B50$comm)
+organics_2019_B50 <- separate(organics_2019_B50,comm,into = c("comm","suf"),sep = "-")
+organics_2019_B50$suf = ifelse(str_detect(string = organics_2019_B50$suf, pattern = "OR"), "ORGANIC", organics_2019_B50$suf)
+organics_2019_B50$comm = ifelse(!is.na(organics_2019_B50$suf),paste0(organics_2019_B50$comm,"-",organics_2019_B50$suf),organics_2019_B50$comm)
+organics_2019_B50 = dplyr::select(organics_2019_B50, -suf)
 ```
 
 
@@ -210,79 +153,25 @@ for(i in years){
   # Create a site column
   tmp_ag$site = substr(tmp_ag$permitsite,8,nchar(tmp_ag$permitsite))
   
-  # Find the pesticide use data.frame that corresponds to pest_data_year.i
+  # Get temp copy of the pesticide use data.frame that corresponds to pest_data_year.i
   tmp_pst = eval(as.name(paste0("pest_data_",i)))
   
   # Left join the pesticide use data.frame to the Agriculture shapefile on 'permitsite' and 'commodity' -- use this to data.frame to filter out fuzyz joins
-  left_joined_ag_pst = left_join(tmp_ag,tmp_pst, by = c("permitsite","commodity"), suffix = c(".ag", ".pur"))
+  left_joined_ag_pst = left_join(tmp_ag,tmp_pst, by = c("permitsite", "commodity"), suffix = c(".ag", ".pur"))
+  anti_joined_ag = anti_join(tmp_ag,tmp_pst,by = c("permitsite", "commodity"), suffix = c(".ag", ".pur"))
   
-  # Inner join to find all the kern ag rows and PUR rows that don't join
-  inner_joined_ag_pst = inner_join(tmp_ag,tmp_pst, by = c("permitsite","commodity"), suffix = c(".ag", ".pur"))
+  print(table(is.na(left_joined_ag_pst$permit.pur)))
   
-  # Vector of joined permitsites
-  joined_permitsites = inner_joined_ag_pst$permitsite
+  # # Inner join to find all the kern ag rows and PUR rows that don't join
+  anti_joined_ag = anti_join(tmp_ag,tmp_pst, by = c("permitsite"), suffix = c(".ag", ".pur"))
   
-  # Get the ag and pest rows that didn't join
-  tmp_ag_leftovers = filter(tmp_ag, !(permitsite %in% joined_permitsites))
-  tmp_pst_leftovers = filter(tmp_pst, !(permitsite %in% joined_permitsites))
-  
-  ########################### Try fuzzy join on ag and PUR rows that didn't join: Exact match on permit and Comm, fuzzy match on site
-  fuzzy_join = stringdist_inner_join(x = tmp_ag_leftovers,
-                                         y = tmp_pst_leftovers,
-                                         by = ("site"), 
-                                         max_dist = 2, 
-                                         #mode = "inner", 
-                                         distance_col = "dist") %>%  # Join the leftovers rows based on permitsite
-    filter(permit.x == permit.y & commodity.x == commodity.y) # And get rid of any that don't have the same commodity or permit: 
-
-  
-  # Get Ag permitsites that joined in fuzzy join
-  fuzzy_permitsites = unique(fuzzy_join$permitsite.x)
-  
-  # Filter out fuzzy permitsites from the Left Joined Ag Pest data
-  final_joined_ag_pst = left_joined_ag_pst %>% 
-    filter(!(permitsite %in% fuzzy_permitsites))
+  # anti_joined_pst = anti_join(tmp_pst,tmp_ag, by = c("permitsite"), suffix = c(".ag", ".pur"))
+  # 
   
   # Assign a unique name based on the year
-  assign(paste0("organics_pest_",i), final_joined_ag_pst)
+  assign(paste0("organics_pest_",i), left_joined_ag_pst)
   
 }
-```
-
-### IGNORE FOR NOW All the stuff in this chunck was just digging into all the pesticide use data that didn't join with kern ag data on permitsite 
-```{r}
-# 
-# # Read in original Pesticide use reports from the Kern Website
-# original_PUR = read.csv("../R_input/CSV/KC17PURS.csv")
-# 
-# # Create permitsite column
-# original_PUR$permitsite = as.character(paste0(original_PUR$Permit..,original_PUR$Site.ID))
-# 
-# # Create new dataframe with all unique permitsites
-# uniquePURs = data.frame("permitsite"=unique(original_PUR$permitsite))
-# 
-# ## Compare to PUR data from Ashley
-# # ASHLEY PEST DATA versus KERN AG PEST DATA
-# matches_PURs = inner_join(pest_data_2017,uniquePURs,by="permitsite")
-# 
-# # KERN AG PEST DATA versus ASHLEY PEST DATA
-# kern_PUR_mismatch = anti_join(uniquePURs,pest_data_2017,by="permitsite")
-# 
-# # ASHLEY PEST DATA versus KERN AG PEST DATA 
-# ashley_PUR_mismatch = anti_join(pest_data_2017,uniquePURs,by="permitsite")
-# 
-# mismatches = data.frame("FromKernPUR" = sort(kern_PUR_mismatch$permitsite),
-#                            "fromKernOrgCollapseCSV" = sort(ashley_PUR_mismatch$permitsite))
-# 
-# write.csv(mismatches,"../R_output/CSV/PUR_permitsite_mismatches.csv")
-# 
-# # Try joining Kern PUR to Kern AG to see how many matches
-# # Join the pesticide use data.frame to the 
-#   # Agriculture shapefile on 'permitsite' and keep only the rows that had matches
-# 
-# KernPUR_ag_join = left_join(organics_2017_B50,uniquePURs, by = c("permtst" = "permitsite"))
-# KernPUR_ag_join_PURmismatch = anti_join(uniquePURs,organics_2017_B50, by = c("permitsite" = "permtst"))
-# KernAg_PUR_join_KernAgmismatch = anti_join(organics_2017_B50,uniquePURs,by = c("permtst" = "permitsite"))
 ```
 
 #### 5. Determine the number of crops being grown on multi-crop fields (s_status == "M") and add information to the KernAg_CDFA_pesticideUse dataframe shapefile.
