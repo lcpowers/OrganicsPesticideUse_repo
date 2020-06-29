@@ -22,6 +22,7 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
     dplyr::select(PERMIT,
                   PMT_SITE,
                   S_STATUS,
+                  P_STATUS,
                   PERMITTEE,
                   "COMPANY" = company,
                   COMM,

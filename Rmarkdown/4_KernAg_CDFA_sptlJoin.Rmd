@@ -112,7 +112,7 @@ for(i in years){
   rm(tmp)
   
   tmp <- read_sf(paste0("../R_output/spatial/KernAg_withSoil/",i,"/KernAg_withSoil_",i,".shp")) %>%
-    dplyr::select(PERMIT,PMT_SITE,S_STATUS,COMM,PERMITTEE,AG_TRS)
+    dplyr::select(PERMIT,PMT_SITE,S_STATUS,P_STATUS,COMM,PERMITTEE,AG_TRS)
 
   assign(paste0("kern_",i),tmp)
   rm(tmp)
@@ -148,6 +148,7 @@ for(i in years){
     dplyr::select("permit" = PERMIT,
          "permitsite" = PMT_SITE,
          "s_status" = S_STATUS,
+         "p_status" = P_STATUS,
          "permittee" = PERMITTEE,
          "comm" = COMM,
          "comm_code" = COMM_CODE,

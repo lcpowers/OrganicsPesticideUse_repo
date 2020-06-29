@@ -12,8 +12,8 @@ Soil_to_KernAg_fun = function(year){
   
   ###### Deal with the rows where all data is exactly the same, except geometries are different. 
   ag_sf = ag_sf %>% 
-    group_by(PERMIT,PERMITTEE,PMT_SITE,COMM,S_STATUS,P_STATUS,ACRES,AG_TRS) %>% 
-    summarise()
+    group_by(PERMIT,PERMITTEE,PMT_SITE,COMM,S_STATUS,P_STATUS,ACRES,AG_TRS) %>% # Group by all column except geometry
+    summarise() # Summarise by geometry. The effect is that rows with identical information will get combined geometries AKA >1 polygons to 1.  
   
   ag_sf$COMM <- as.character(ag_sf$COMM)
   # ag_sf$COMM_CODE<- as.character(ag_sf$COMM_CODE)
