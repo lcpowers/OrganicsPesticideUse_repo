@@ -66,6 +66,8 @@ table(all_years_df$year)
 #                            "KgAiGrndWat","KgAiDrift","KgAiReptAmph","acrestreated" ,
 #                            "KgAInsectOnly","KgAHerbOnly","KgAFungOnly","AiInsFng","N_crops","hectares","KgAIperHE","KgPRDperHE") #old order
 
+
+### This should throw an error because it's not enough column names. Need to add in P_status wherever it ends up.
 colnames(all_years_df) = c("permitsite","ag_permit","s_status","permittee","comm_original","comm_code","agroclass","genus","family",
                            "comm_edit","acres","soil_quality","apn_org","trsonly_org","trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org",
                            "all_org","ag_site","year","pur_permit","pur_site","ac_permit","units","n_crops","hectares")

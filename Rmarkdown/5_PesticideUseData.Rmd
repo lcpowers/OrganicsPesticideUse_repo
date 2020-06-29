@@ -39,8 +39,10 @@ library(fuzzyjoin)
 options(scipen = 999) 
 
 # Read in Pesticide Data 
-pest_data_raw = read_dta("../R_input/dta/KernFieldCrops1319.dta") %>% 
-  as.data.frame()
+pest_data_raw = read_dta("../R_input/dta/KernOrgCollapse1319_062920.dta") %>% 
+  as.data.frame() 
+
+## Remember to deal with the commodity different but everything else identical issue
 
 # Specify years of interest
 years = 2013:2019
@@ -120,17 +122,17 @@ for(i in years){ # For each year...
     }
 }
 
-organics_2018_B50$comm = as.character(organics_2018_B50$comm)
-organics_2018_B50 <- separate(organics_2018_B50,comm,into = c("comm","suf"),sep = "-")
-organics_2018_B50$suf = ifelse(str_detect(string = organics_2018_B50$suf, pattern = "OR"), "ORGANIC", organics_2018_B50$suf)
-organics_2018_B50$comm = ifelse(!is.na(organics_2018_B50$suf),paste0(organics_2018_B50$comm,"-",organics_2018_B50$suf),organics_2018_B50$comm)
-organics_2018_B50 = dplyr::select(organics_2018_B50, -suf)
-
-organics_2019_B50$comm = as.character(organics_2019_B50$comm)
-organics_2019_B50 <- separate(organics_2019_B50,comm,into = c("comm","suf"),sep = "-")
-organics_2019_B50$suf = ifelse(str_detect(string = organics_2019_B50$suf, pattern = "OR"), "ORGANIC", organics_2019_B50$suf)
-organics_2019_B50$comm = ifelse(!is.na(organics_2019_B50$suf),paste0(organics_2019_B50$comm,"-",organics_2019_B50$suf),organics_2019_B50$comm)
-organics_2019_B50 = dplyr::select(organics_2019_B50, -suf)
+# organics_2018_B50$comm = as.character(organics_2018_B50$comm)
+# organics_2018_B50 <- separate(organics_2018_B50,comm,into = c("comm","suf"),sep = "-")
+# organics_2018_B50$suf = ifelse(str_detect(string = organics_2018_B50$suf, pattern = "OR"), "ORGANIC", organics_2018_B50$suf)
+# organics_2018_B50$comm = ifelse(!is.na(organics_2018_B50$suf),paste0(organics_2018_B50$comm,"-",organics_2018_B50$suf),organics_2018_B50$comm)
+# organics_2018_B50 = dplyr::select(organics_2018_B50, -suf)
+# 
+# organics_2019_B50$comm = as.character(organics_2019_B50$comm)
+# organics_2019_B50 <- separate(organics_2019_B50,comm,into = c("comm","suf"),sep = "-")
+# organics_2019_B50$suf = ifelse(str_detect(string = organics_2019_B50$suf, pattern = "OR"), "ORGANIC", organics_2019_B50$suf)
+# organics_2019_B50$comm = ifelse(!is.na(organics_2019_B50$suf),paste0(organics_2019_B50$comm,"-",organics_2019_B50$suf),organics_2019_B50$comm)
+# organics_2019_B50 = dplyr::select(organics_2019_B50, -suf)
 
 ```
 
@@ -156,9 +158,10 @@ for(i in years){
   # Get temp copy of the pesticide use data.frame that corresponds to pest_data_year.i
   tmp_pst = eval(as.name(paste0("pest_data_",i)))
   
-  # Left join the pesticide use data.frame to the Agriculture shapefile on 'permitsite' and 'commodity' -- use this to data.frame to filter out fuzyz joins
-  left_joined_ag_pst = left_join(tmp_ag,tmp_pst, by = c("permitsite", "commodity"), suffix = c(".ag", ".pur"))
+  # Left join the pesticide use data.frame to the Agriculture shapefile on 'permitsite' and 'commodity' -- use this to data.frame to filter out fuzzy joins
+  full_joined_ag_pst = full_join(tmp_ag,tmp_pst, by = c("permitsite", "commodity"), suffix = c(".ag", ".pur"))
   anti_joined_ag = anti_join(tmp_ag,tmp_pst,by = c("permitsite", "commodity"), suffix = c(".ag", ".pur"))
+  anti_joined_pst = anti_join(tmp_pst,tmp_ag,by = c("permitsite", "commodity"), suffix = c(".pur", ".ag"))
   
   print(table(is.na(left_joined_ag_pst$permit.pur)))
   
@@ -172,6 +175,7 @@ for(i in years){
   assign(paste0("organics_pest_",i), left_joined_ag_pst)
   
 }
+
 ```
 
 #### 5. Determine the number of crops being grown on multi-crop fields (s_status == "M") and add information to the KernAg_CDFA_pesticideUse dataframe shapefile.
