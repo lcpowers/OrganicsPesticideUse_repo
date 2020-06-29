@@ -14,7 +14,8 @@ library(rgdal)
 library(sf)
 
 # setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
-
+pest_data_raw = read_dta("../R_input/dta/KernFieldCrops1319.dta") %>% 
+  as.data.frame()
 ```
 
 #### 2. Read in data (shapefile) for each year, and turn into df to rbind in next chunk
@@ -65,10 +66,11 @@ table(all_years_df$year)
 #                            "KgAiGrndWat","KgAiDrift","KgAiReptAmph","acrestreated" ,
 #                            "KgAInsectOnly","KgAHerbOnly","KgAFungOnly","AiInsFng","N_crops","hectares","KgAIperHE","KgPRDperHE") #old order
 
-colnames(all_years_df) = c("permitsite","permit","s_status","permittee","comm_original","comm_code","agroclass","genus","family",
-                           "comm_edit","acres","soil_quality","apn_org","trsOnly_org","trsPermittee_Org","cdfa_org","KernComm_org","KernPermittee_org",
-                           "all_org","ag_site","pur_permit","pur_site","year","n_crops","hectares")
+colnames(all_years_df) = c("permitsite","ag_permit","s_status","permittee","comm_original","comm_code","agroclass","genus","family",
+                           "comm_edit","acres","soil_quality","apn_org","trsonly_org","trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org",
+                           "all_org","ag_site","year","pur_permit","pur_site","ac_permit","units","n_crops","hectares")
 
+write_dta(all_years_df, "../R_output/CSV/compiled_organics1319.dta")
 write_csv(all_years_df, "../R_output/CSV/compiled_organics1319.csv")
 ```
 

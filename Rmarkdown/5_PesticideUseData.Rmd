@@ -120,7 +120,6 @@ for(i in years){ # For each year...
     }
 }
 
-
 organics_2018_B50$comm = as.character(organics_2018_B50$comm)
 organics_2018_B50 <- separate(organics_2018_B50,comm,into = c("comm","suf"),sep = "-")
 organics_2018_B50$suf = ifelse(str_detect(string = organics_2018_B50$suf, pattern = "OR"), "ORGANIC", organics_2018_B50$suf)
@@ -132,6 +131,7 @@ organics_2019_B50 <- separate(organics_2019_B50,comm,into = c("comm","suf"),sep 
 organics_2019_B50$suf = ifelse(str_detect(string = organics_2019_B50$suf, pattern = "OR"), "ORGANIC", organics_2019_B50$suf)
 organics_2019_B50$comm = ifelse(!is.na(organics_2019_B50$suf),paste0(organics_2019_B50$comm,"-",organics_2019_B50$suf),organics_2019_B50$comm)
 organics_2019_B50 = dplyr::select(organics_2019_B50, -suf)
+
 ```
 
 
