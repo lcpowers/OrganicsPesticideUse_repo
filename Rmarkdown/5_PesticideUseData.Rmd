@@ -51,9 +51,6 @@ years = 2013:2019
 buf_width = c(50)
 ```
 
-################# Fuzzy match ideas,methods #####################
-Exact match on permit, fuzzy match on site
-- Permit is in the Ag attribute table already. To get site we can just trim off the Permit # from the permit site column OR rerun the KernAg to soil rmd with an update to keep the "site" column that we currently get rid of...
 
 #### 2. Create pesticide use dataframes for each year
 ```{r pest_dataframes, message=FALSE}
@@ -102,6 +99,8 @@ n_distinct(pest_data_2019$permitsite,pest_data_2019$commodity)
 ```
 
 
+Want all/nearly all of the pest data to have a match in the Kern Ag shapefile
+
 #### 3. Read in KernAg_CDFA shapefiles for each year and give unique name
 ```{r get_kernAg}
 
@@ -117,7 +116,7 @@ for(i in years){ # For each year...
   
   # Assign a name
   assign(paste0("organics_",i,"_B",j),tmp)
-  
+  print(c(i,nrow(tmp)))
   remove(tmp)
     }
 }
@@ -138,7 +137,7 @@ for(i in years){ # For each year...
 
 
 #### 4. Join pesticide data to Kern Agriculture/CDFA data by the 'permitsite' column. The 'permitsite' column is the unique identifier for each field, and is a concatenated version of the permit number and site ID. 
-```{r}
+```{r warning=FALSE}
 for(i in years){
   
   # Find the data.frame that was previously read in and corresponds 
@@ -147,29 +146,38 @@ for(i in years){
     as.data.frame() 
   
   colnames(tmp_ag)[2] <- "permitsite"
-  colnames(tmp_ag)[5] <- "commodity"
+  colnames(tmp_ag)[6] <- "commodity"
   
   # Check to make sure all permits are 7 characters long -- check all years in RMD 6 and true: all permits = 7 characters long
   # nchars = as.data.frame(table(nchar(tmp_ag$permit)))
-  
-  # Create a site column
-  tmp_ag$site = substr(tmp_ag$permitsite,8,nchar(tmp_ag$permitsite))
   
   # Get temp copy of the pesticide use data.frame that corresponds to pest_data_year.i
   tmp_pst = eval(as.name(paste0("pest_data_",i)))
   
   # Left join the pesticide use data.frame to the Agriculture shapefile on 'permitsite' and 'commodity' -- use this to data.frame to filter out fuzzy joins
-  full_joined_ag_pst = full_join(tmp_ag,tmp_pst, by = c("permitsite", "commodity"), suffix = c(".ag", ".pur"))
-  anti_joined_ag = anti_join(tmp_ag,tmp_pst,by = c("permitsite", "commodity"), suffix = c(".ag", ".pur"))
-  anti_joined_pst = anti_join(tmp_pst,tmp_ag,by = c("permitsite", "commodity"), suffix = c(".pur", ".ag"))
-  
-  print(table(is.na(left_joined_ag_pst$permit.pur)))
-  
-  # # Inner join to find all the kern ag rows and PUR rows that don't join
+ left_joined_ag_pst = left_join(tmp_ag,tmp_pst, by = c("permitsite","commodity"), suffix = c(".ag", ".pur"))
+ 
+ # find out how much of the pest data didn't have an ag match
+ anti_joined_pst = anti_join(tmp_pst,tmp_ag, by = c("permitsite","commodity"), suffix = c(".ag", ".pur"))
+ print(c(i,"anti_joined_pst",nrow(anti_joined_pst)))
+   # 2013: 51
+   # 2014: 37
+   # 2015: 66
+   # 2016: 80
+   # 2017: 66
+   # 2018: 109
+   # 2019: 142
+ 
+  # Find out how much of the ag data didn't have a pest match
   anti_joined_ag = anti_join(tmp_ag,tmp_pst, by = c("permitsite"), suffix = c(".ag", ".pur"))
-  
-  # anti_joined_pst = anti_join(tmp_pst,tmp_ag, by = c("permitsite"), suffix = c(".ag", ".pur"))
-  # 
+  print(c(i,"anti_joined_ag", nrow(anti_joined_ag)))
+   # 2013: 3951
+   # 2014: 4187
+   # 2015: 4184
+   # 2016: 4165
+   # 2017: 4068
+   # 2018: 4242
+   # 2019: 4190
   
   # Assign a unique name based on the year
   assign(paste0("organics_pest_",i), left_joined_ag_pst)
