@@ -187,7 +187,7 @@ for(i in years){
 ```
 
 #### 5. Determine the number of crops being grown on multi-crop fields (s_status == "M") and add information to the KernAg_CDFA_pesticideUse dataframe shapefile.
-```{r deal_with_Mfields}
+```{r deal_with_Mfields, warning=FALSE}
 
 for(i in years){
   
