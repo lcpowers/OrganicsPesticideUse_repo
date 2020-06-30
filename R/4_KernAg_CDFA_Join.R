@@ -9,8 +9,6 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   cdfa_prcl_sf = read_sf(paste0("../R_output/spatial/CDFA_APN_parcels/",year,"/cdfa_parcels_",year,".shp")) %>% 
     st_transform(., CRS("+proj=aea +lat_1=34 +lat_2=40.5 +lat_0=0 +lon_0=-120 +x_0=0 +y_0=-4000000 +ellps=GRS80 +datum=NAD83 +units=m +no_defs ")) 
   
-  # %>% 
-  #   st_buffer(., dist = -buf_width)
   
   ######### Joining data ##########
   

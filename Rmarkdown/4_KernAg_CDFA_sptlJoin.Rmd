@@ -42,6 +42,7 @@ library(rgdal) # Gdal for R
 library(rgeos) # need this for gBuffer
 library(sf) # Specific operations on different versions of shapefiles in R
 library(raster)
+library(cleangeo)
 
 # Set working directory for For Claire's computer
 # setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown")
@@ -106,21 +107,30 @@ dir.create("../R_output/spatial/final_organics_data/")
 for(i in years){
   
   # Read in data produced above. This is the cdfa data joined to kern county parcels on APN, then spatially joined to kern ag data in the above function
-   tmp <- read_sf(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50/KernAg_CDFA_all_",i,"_B50.shp"))
+   tmp <- readOGR(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50/KernAg_CDFA_all_",i,"_B50.shp")) %>% 
+     cleangeo::clgeo_Clean(.) %>% 
+     st_as_sf()
   
   assign(paste0("cdfa_kern_apn_",i),tmp)
   rm(tmp)
   
+  ## Read in Kern Ag data with soil quality in attribute table, produced in RMD 3
   tmp <- read_sf(paste0("../R_output/spatial/KernAg_withSoil/",i,"/KernAg_withSoil_",i,".shp")) %>%
-    dplyr::select(PERMIT,PMT_SITE,S_STATUS,P_STATUS,COMM,PERMITTEE,AG_TRS)
-
+    dplyr::select(PERMIT,PMT_SITE,S_STATUS,P_STATUS,COMM,PERMITTEE,AG_TRS) %>% 
+    as(.,"Spatial") %>% 
+    cleangeo::clgeo_Clean(.) %>% 
+    st_as_sf()
+  
   assign(paste0("kern_",i),tmp)
   rm(tmp)
   
-  # Read in shapefile of the PLSS Sections that joined to CDFA data on TRS codes. 
+  ##  Read in shapefile of the PLSS Sections that joined to CDFA data on TRS codes. 
   tmp <- read_sf(paste0("../R_output/spatial/CDFA_PLSS_sections/",i,"/cdfa_sections_",i,".shp")) %>% 
     st_as_sf() %>% 
-    mutate(trs_match = 1)
+    mutate(trs_match = 1) %>% 
+    as(.,"Spatial") %>% 
+    cleangeo::clgeo_Clean(.) %>% 
+    st_as_sf()
   
   assign(paste0("cdfa_sections_",i),tmp)
   rm(tmp)
@@ -130,7 +140,8 @@ for(i in years){
                       eval(as.name(paste0("cdfa_sections_",i))),
                       largest=T)
   
-  cdfasection_ag_join$trs_orgPermittee_match <- ifelse((str_detect(cdfasection_ag_join$PERMITTEE,"ORGANIC") & cdfasection_ag_join$trs_match == 1),1,0)
+  cdfasection_ag_join$trs_orgPermittee_match <- ifelse((str_detect(cdfasection_ag_join$PERMITTEE,"ORGANIC") &
+                                                          cdfasection_ag_join$trs_match == 1),1,0)
     
   org_cdfaSection_ag  = cdfasection_ag_join %>% 
   dplyr::select("permittee" = PERMITTEE,
@@ -206,10 +217,9 @@ for(i in years){
   print(i)
   
   tmp = eval(as.name(paste0("apn_trs_orgs_",i)))
-  tmp$comm_org = 0
-  tmp$comm_org <- ifelse(str_detect(tmp$comm,"ORGANIC"),1,0)
-  tmp$permittee_org <- ifelse(str_detect(tmp$permittee,"ORGANIC"),1,0)
-  print(sum(tmp$comm_org))
+  tmp$comm_org <- ifelse(str_detect(tmp$comm,"ORG"),1,0)
+  tmp$permittee_org <- ifelse(str_detect(tmp$permittee,"ORG"),1,0)
+  print(sum(tmp$comm_org, na.rm = T))
   print(sum(tmp$permittee_org))
   
   tmp$all_organic = 0
