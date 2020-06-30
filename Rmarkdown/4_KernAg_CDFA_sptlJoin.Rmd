@@ -94,7 +94,7 @@ for(i in years){
 ```
 
 #### 3. Perform spatial join between CDFA TRS-matched sections and Kern Agriculture Parcels -- Extract Ag parcels that overlap with CDFA sections AND contain the word 'organic' in the company name. 
-```{r trs_ag_join}
+```{r trs_ag_join, warning=FALSE}
 
 years = 2013:2019
 
@@ -214,17 +214,25 @@ for(i in years){
 years = 2013:2019
 
 for(i in years){
-  print(i)
   
+  # Get file with APN and TRS organic designations
   tmp = eval(as.name(paste0("apn_trs_orgs_",i)))
-  tmp$comm_org <- ifelse(str_detect(tmp$comm,"ORG"),1,0)
-  tmp$permittee_org <- ifelse(str_detect(tmp$permittee,"ORG"),1,0)
-  print(sum(tmp$comm_org, na.rm = T))
-  print(sum(tmp$permittee_org))
   
-  tmp$all_organic = 0
-  tmp$all_organic = ifelse(tmp$comm_org==1|tmp$trs_only==1|tmp$apn==1,1,0)
-  print(sum(tmp$all_organic))
+  # Create an organic commodity field. If contains "ORG" but not "SORGHUM" == 1. This would exclude organic sorghum, but haven't seen any of that. 
+  tmp$comm_org <- ifelse((str_detect(tmp$comm,"ORG")&!str_detect(tmp$comm,"SORG")),1,0)
+  
+  # Create Ogranic permittee field
+  tmp$permittee_org <- ifelse(str_detect(tmp$permittee,"ORGA"),1,0)
+  
+  # Create a combined organic field that incorporates comm_org, trs_org, and apn_org
+  tmp$all_organic = ifelse((tmp$comm_org==1|tmp$trs_only==1|tmp$apn==1),1,0)
+  
+  print(c(i,
+          "comm_org", sum(tmp$comm_org, na.rm = T),
+          "permittee_org",sum(tmp$permittee_org),
+          "apn_org",sum(tmp$apn),
+          "trs_org",sum(tmp$trs_only),
+          "all_org", sum(tmp$all_organic)))
   
   # Write Output File
   writeOGR(obj = as(tmp,"Spatial"),
