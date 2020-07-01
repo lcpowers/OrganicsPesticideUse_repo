@@ -26,9 +26,7 @@ years = 2013:2019
 ## Read in shapefiles and make into a simple data.frame without geometry
 for(i in years){
   
-  tmp = read_sf(paste0("../R_output/spatial/final_organics_data/",i,"/all_organics_pest_",i,".shp")) %>% 
-    as.data.frame() %>% 
-    dplyr::select(-geometry)
+  tmp = read_sf(paste0("../R_output/spatial/final_organics_data/",i,"/all_organics_pest_",i,".shp")) 
   
   assign(paste0("organics_df_",i),tmp)
   
@@ -38,15 +36,55 @@ for(i in years){
 
 ```
 
+# Redo agroclass join to 2019
+```{r}
+
+# Convert comm_edit column from factor to character
+organics_df_2019$comm_dt=as.character(organics_df_2019$comm_dt)
+
+# Fix the rows with '-' at the end of the comm column. 2019 is the worst
+organics_df_2019 = organics_df_2019 %>%
+    separate(col = "comm_dt",
+             into = c("COMM_x","COMM_y"),
+             sep = "-",
+             remove = FALSE)
+
+# Get rid of '-' where it exists at the end of commodity strings
+organics_df_2019$comm_dt = ifelse((organics_df_2019$COMM_y==""|organics_df_2019$COMM_y=="O"|is.na(organics_df_2019$COMM_y)),organics_df_2019$COMM_x,organics_df_2019$comm_dt)
+
+## Fix 2019 commcode/agroclass issue, which seems to mainly result from the weird, truncated -ORGANIC in some columns. Just join the two based on comm_edit
+agro_class <- read_csv("../R_input/CSV/Kern_AG/comm_subgroups.csv")
+missing_agrcls = filter(organics_df_2019,is.na(agrclss))
+# 218 before
+
+organics_df_2019 = left_join(x = organics_df_2019,y = agro_class, by = c("comm_dt" = "commodity"))
+missing_agrcls = filter(organics_df_2019,is.na(agroclass))
+# 141 after
+
+data.frame(table(organics_df_2019$comm_dt[is.na(organics_df_2019$agroclass)])) %>% 
+  arrange(-Freq)
+
+organics_df_2019 = organics_df_2019 %>% 
+  dplyr::select(permtst,permit,s_stats,p_stats,permitt,commdty,comm_cd,
+                "agrclss" = agroclass, "genus" = genus.y, "family" = family.y,comm_dt,
+                acres,soil_q,apn,trs_nly,trs_rgP,cdf_rgn,comm_rg,
+                prmtt_r,all_rgn,year,permitn,locatin,N_crps_,hectars, geometry)
+
+# Check that columns are in the same order and have the same names are other years, for the rbind
+colnames(organics_df_2013) == colnames(organics_df_2019)
+```
+
 #### 3. CSV OUTPUT: Compile (rbind) years into one df
 ```{r compile_for_csv}
 
-all_years_df <- data.frame(matrix(ncol=ncol(organics_df_2013),nrow=0))
-colnames(all_years_df) <- colnames(organics_df_2013)
+all_years_df <- data.frame(matrix(ncol=ncol(organics_df_2013)-1,nrow=0))
+colnames(all_years_df) <- colnames(organics_df_2013)[1:ncol(organics_df_2013)-1]
 
 for(i in years){
   
-  tmp <- eval(as.name(paste0("organics_df_",i)))
+  tmp <- eval(as.name(paste0("organics_df_",i))) %>% 
+    as.data.frame() %>% 
+    dplyr::select(-geometry)
   
   tmp$year = i
   
@@ -60,7 +98,6 @@ for(i in years){
 table(all_years_df$year)
 # 2013  2014  2015  2016  2017  2018  2019 
 # 13997 13906 14057 14017 14287 14431 14841 
-
 
 ### This should throw an error because it's not enough column names. Need to add in P_status wherever it ends up.
 colnames(all_years_df) = c("permitsite","ag_permit","s_status","p_status","permittee","comm_original","comm_code","agroclass","genus","family",
@@ -76,24 +113,13 @@ write_csv(all_years_df, "../R_output/CSV/compiled_organics1319.csv")
 
 years = 2013:2019
 
-## Read in shapefiles 
-for(i in years){
-  
-  tmp = read_sf(paste0("../R_output/spatial/final_organics_data/",i,"/all_organics_pest_",i,".shp"))
-  
-  assign(paste0("organics_shp_",i),tmp)
-  
-  rm(tmp)
-  
-}
-
-
-all_years_shp <- organics_shp_2013
+all_years_shp <- organics_df_2013
+all_years_shp$year = 2013
 years = 2014:2019
 
 for(i in years){
   
-  tmp <- eval(as.name(paste0("organics_shp_",i)))
+  tmp <- eval(as.name(paste0("organics_df_",i)))
   
   tmp$year = i
   
@@ -105,7 +131,6 @@ for(i in years){
 
 # Check
 table(all_years_shp$year)
- 
 
 colnames(all_years_shp) = c("permitsite","ag_permit","s_status","p_status","permittee","comm_original","comm_code","agroclass","genus","family",
                            "comm_edit","acres","soil_quality","apn_org","trsonly_org","trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org",

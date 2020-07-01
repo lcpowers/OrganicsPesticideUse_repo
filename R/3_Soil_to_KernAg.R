@@ -16,14 +16,9 @@ Soil_to_KernAg_fun = function(year){
     summarise() # Summarise by geometry. The effect is that rows with identical information will get combined geometries AKA >1 polygons to 1.  
   
   ag_sf$COMM <- as.character(ag_sf$COMM)
-  # ag_sf$COMM_CODE<- as.character(ag_sf$COMM_CODE)
   
   ag_merge <- left_join(ag_sf,agro_class, 
                     by = c("COMM"))
-  
-  # ag_merge_check <- ag_merge %>% 
-  #  as.data.frame(.) %>% 
-  #  filter(is.na(FAMILY))
  
   ag_slct <- ag_merge %>% 
     dplyr::select(-c(COMM_EDIT,COMM_CODEOLD))

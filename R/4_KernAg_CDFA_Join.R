@@ -44,9 +44,9 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
   output$COMM_x=as.character(output$COMM_x)
   output$COMM_y=as.character(output$COMM_y)
 
-  # If the word 'ORGANIC' is in the COMM_y column, keep only the COMM_x column,
+  # If some portion of the word 'ORGANIC' is in the COMM_y column, keep only the COMM_x column,
   # otherwise keep the original value in the COMM column
-  output$COMM_new <- ifelse(output$COMM_y == "ORGANIC"|is.na(output$COMM_y),output$COMM_x,output$COMM)
+  output$COMM_new <- ifelse(str_detect(output$COMM_y,"OR")|is.na(output$COMM_y),output$COMM_x,output$COMM)
   
   # Remove the COMM_x and COMM_y columns
   output = output %>%
