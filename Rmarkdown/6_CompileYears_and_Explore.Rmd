@@ -37,7 +37,7 @@ for(i in years){
 ```
 
 # Redo agroclass join to 2019
-```{r}
+```{r fix_2019_agroclassJoin}
 
 # Convert comm_edit column from factor to character
 organics_df_2019$comm_dt=as.character(organics_df_2019$comm_dt)
