@@ -13,18 +13,21 @@ knitr::opts_chunk$set(echo = TRUE)
 
 **Notes:**   
 
-  * APNs are self-reported by farmers to the CDFA, and exist in a wide variety of formats in the CDFA database *so*,
+  * APNs are self-reported by farmers to the CDFA, and exist in a wide variety of formats in the CDFA database *so*:
   * Before reading CSVs into this Rmd document, the APN entry format was edited in Excel:
-      * Each individual entry was seperated into their own columns (i.e. if two entries were entered into the same cell, they were seperated, maintaining the same row but ending up in individual columns, so that each cell contained no more than one entry)
+      * Each individual entry was separated into it's own column (i.e. if two entries were entered into the same cell, they were separated, maintaining the same row but ending up in individual columns, so that each cell contained no more than one entry)
       * If APN #s didn't have dashes, a dash was added between the 3 and 4 digit and between the 6 and 7 digit. 
       
-  * This code uses a function stored in the "1_APN_edit.R" file to edited APNs. The function takes the original APN values and puts them into a '123-456-78' format to match the format of those in the Kern County Parcel shapefile attribute table
-  * APN edit methods were evaluated on the number of matches made between CDFA APNs and Kern County Parcel data, and the accuracy of those matches based on comparison of the Permittee and Company columns, respectively. This comparison can be seen in the table FILL IN THE BLANK
-  * In some instances, the Permittee and Company columns did not match. Further research showed that this was often the result of parent companies owning smaller companies i.e. Parent company Grimmway Farms which owns Crystal Organics, based on records available on the internet <https://www.scscertified.com/fff/viewsupplier.php?id=776>;<https://www.growingproduce.com/vegetables/grower-experienced-in-biocontrols-says-be-patient/>. 
+  * This code uses a function stored in the "1_APN_edit.R" file to edited APN values. The function takes the original APN values and puts them into a '123-456-78' format to match the format of those in the Kern County Parcel shapefile attribute table
+  * APN edit methods were evaluated on the number of matches made between CDFA APNs and Kern County Parcel data, and the accuracy of those matches was evaluated based on comparison of the Permittee and Company columns, respectively. 
+  * In some instances, the Permittee and Company columns did not match. Further research showed that this was often the result of parent companies owning smaller companies i.e. Parent company Grimmway Farms which owns Crystal Organics, based on records found on the internet <https://www.scscertified.com/fff/viewsupplier.php?id=776>;<https://www.growingproduce.com/vegetables/grower-experienced-in-biocontrols-says-be-patient/>. 
 
 **Output:**
 
 * CSV files of CDFA original and edited APNs in R_input and R_output files 
+  - ../R_output/CSV/CDFA/final_APN/CDFA_APNs_[YEAR].csv
+  - ../R_input/CSV/CDFA/final_APN/CDFA_APNs_[YEAR].csv
+
 
 ---
 
@@ -33,16 +36,13 @@ library(tidyverse)
 library(reshape2)
 library(rgdal)
 
-# Set working directory for For Claire's computer
-# setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
-
 # Bring in the function stored in the '1_APN_edit.R' script. If editing that function, 
 # check the box that says 'source on save' to upload that latest version of the function 
 # in this Rmarkdown document
 source("../R/1_APN_edit.R") 
 ```
 
-## Apply function to years 2013 to 2019. It was ultimately a little easier to manually work through each year than to apply a for-loop because the column indexes (apn_cols) were different for each year. 
+#### Apply function to years 2013 to 2019. It was ultimately a little easier to manually work through each year than to apply a for-loop because the column indexes (apn_cols) were different for each year. 
 
 #### 2013
 ```{r yr2013, message=FALSE}
@@ -78,7 +78,7 @@ rm(apn_params)
 # multiple columns. Those that have fewer than the maximum number of ? receive NAs in 
 # those columns. The warning is not problematic and does not effect those APN values. 
 ```
-All subsequent years follow the same order of operations as those explained in the code chunk above for 2013. 
+All subsequent years follow the same order of operations as those explained in the 2013 code chunk above. 
 
 
 #### 2014
@@ -172,7 +172,7 @@ rm(apn_params)
 ```
 
 #### 2019
-```{r yr2017, message=FALSE}
+```{r yr2019, message=FALSE}
 cdfa_2019_raw = read_csv("../R_input/CSV/CDFA/excel_edited_APNs/CDFA_excelAPNs_2019.csv")
 
 apn_params = list(id_cols = 1:2, 

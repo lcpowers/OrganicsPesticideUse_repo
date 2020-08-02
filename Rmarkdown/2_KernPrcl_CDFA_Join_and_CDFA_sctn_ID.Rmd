@@ -12,19 +12,22 @@ knitr::opts_chunk$set(echo = TRUE)
 
 **Notes:** 
 
-* This Rmarkdown document uses a function in the "2_KernCountyParcel_CDFA_join.R" file to join CDFA and Kern County Parcel data on their respective APN columns. See notes in that R script for more details about that function
+* This Rmarkdown document uses a function in the "2_KernCountyParcel_CDFA_join.R" file to join CDFA and Kern County Parcel data on their respective APN columns. See notes in that R script for more details about that function. It also identifies the PLSS sections in Kern County that have TRS codes (from COMTRS code) that match those in CDFA data which were reported in place of APNs. 
 
 **Output:**
 
 * Shapefile of with CDFA data joined to Kern County Parcel shapefile attribute table by APN
-
+    - ../R_output/spatial/CDFA_APN_parcels/[YEAR]/cdfa_parcels_[YEAR].shp
+    
+* Shapefile of PLSS sections identified using TRS codes reported in place of APNs in CDFA data
+    - ../R_output/spatial/CDFA_PLSS_sections/cdfa_sections_[YEAR].shp
 ---
 
 #### 1. Load packages, function, and data
 ```{r load_packages, message=FALSE}
-library(tidyverse) # For general data wrangling and operations on dataframes
-library(rgdal) # GDAL for R. 
-library(sf) # For simple features operations in R. Allows the attribute table of a shapefile to be converted to a dataframe structure while maintaining the geometry for easy data view and operations. 
+library(tidyverse) 
+library(rgdal) 
+library(sf) 
 
 # Bring in function stored in the '3_KernCountyParcel_CDFA_join.R' script. If editing that 
 # function, check the box that says 'source on save' to upload that latest version of the 
@@ -37,7 +40,7 @@ KernCoParcels <- readOGR("../R_input/spatial/Kern_Parcels_2017_Final/Kern_Parcel
 
 ```
 
-#### 2. Apply function that joins CDFA data to Kern County Parcel data on the APN field specified years: 2013 - 2017. 
+#### 2. Apply function that joins CDFA tabular data to Kern County Parcel spatial data on the APN field for specified years: 2013 - 2019. 
 ```{r apply_function}
 
 # Specify years 
@@ -47,7 +50,6 @@ yrs = 2013:2019
 dir.create("../R_output/spatial/CDFA_APN_parcels/", recursive = T)
 
 # For more notes about this function see the .R file
-
 for(i in yrs){
   
   KernCoParcel_CDFA_join(year = i, # Year index
@@ -56,29 +58,9 @@ for(i in yrs){
   }
 ```
 
-## 3. Identify PLSS Sections that contain organic parcels (the next phase of this, finding WHICH parcels are organic, is in RMD 4)
+#### 3. Identify PLSS Sections that contain organic parcels (the next phase of this, finding WHICH parcels are organic, is in RMD 4)
 
-### A) Read in Kern County Parcels that matched to CDFA records based on the APN
-```{r cdfa_apn_match}
-
-# Specify years for function to be applied to
-yrs = 2013:2019
-
-### Kern County Parcels that matched with CDFA APNs
-for(i in yrs){
-  
-  tmp = readOGR(paste0("../R_output/spatial/CDFA_APN_parcels/",i,"/cdfa_parcels_",i,".shp")) %>% 
-    st_as_sf()
-  
-  assign(paste0("cdfa_parcels_",i),tmp)
-  
-  rm(tmp)
-  
-  }
-
-```
-
-### B) Bring in Kern Sections shapefile
+##### A) Bring in Kern County PLSS Sections shapefile
 ```{r PLSS_shapefile}
 
 # Bring in Kern Sections shapefile
@@ -92,22 +74,27 @@ kern_sections_slct = kern_sections %>%
 
 # Create TRS column by trimming "m' off the beginning of the MTRS column values
 kern_sections_slct$trs <- str_sub(kern_sections_slct$MTRS,2,9)
+
 ```
 
-### C) Read in CDFA PLSS csv, join to PLSS shapefile and write output shapefile
+##### B) Read in CDFA PLSS csv, join to PLSS shapefile and write output shapefile
 ```{r CDFA_trs}
 
 yrs = 2013:2019
 
 for(i in yrs){
   
+  # Assign output file name
   outputfile=paste0("../R_output/spatial/CDFA_PLSS_sections/",i)
+  
+  # Create output file
   dir.create(outputfile)
   
   # Read in CDFA data with the TRS codes pulled from the APN column
   cdfa_trs_df = read.csv(paste0("../R_input/CSV/CDFA/excel_edited_PLSS/cdfa_trs_",i,".csv")) %>% 
     dplyr::select("Company","t","r","s") 
   
+  # Remove rows that contain NA values in the T, R, or S columns
   cdfa_trs_df = filter(cdfa_trs_df,(!is.na(t)|!is.na(r)|!is.na(s)))
   
   # If a string in the 's' column is less than 2 digits long, pad on the left side with a 0
@@ -127,8 +114,8 @@ for(i in yrs){
     group_by(Company,trs) %>%
     summarise(count = n())
   
-  # print(i)
-  # print(table(cdfa_trs_summary$Company))
+  # Uncomment the following line to print number of unique TRS codes by year
+  # print(i,table(cdfa_trs_summary$Company))
   
   # Merge CDFA to PLSS sections on the TRS columns created above
   cdfa_sections = merge(kern_sections_slct,cdfa_trs_df,by = "trs")
@@ -138,21 +125,17 @@ for(i in yrs){
     dplyr::select(trs,company = "Company",geometry) %>% 
     as(.,"Spatial")
   
-  #Layer Name
+  # Define the layer name for year i
   cdfalayer=paste0("cdfa_sections_",i)
   
+  # Write output file for year i
   writeOGR(cdfa_sections_unique,
            dsn = outputfile,
            layer = cdfalayer,
            driver = "ESRI Shapefile",
            overwrite = TRUE)
   
-  # Remove CDFA dataframes to make sure there isn't crossover between years
-  
-  cdfa_sections_df = as.data.frame(cdfa_sections_unique)
-  
-  assign(paste0("cdfa_trs_",i),cdfa_sections_df)
-  
+  # Remove CDFA data frames to avoid crossover between years
   rm(cdfa_sections)
   rm(cdfa_sections_unique)
   rm(cdfa_trs_summary)

@@ -17,7 +17,7 @@ The data being read in with the read_csv() function is the original CDFA data. I
 
 **Output:**
 
-- CDFA data for years 2013 to 2017 for Kern County
+- CDFA data for years 2013 to 2019 for Kern County
 - ../R_output/CSV/CDFA/kern_filter/Kern_CDFA_APNs_'year'.csv
 
 ---
@@ -26,9 +26,6 @@ The data being read in with the read_csv() function is the original CDFA data. I
 
 ```{r kern_filter_loop, message=FALSE, warning=FALSE}
 library(tidyverse)
-
-# Set working directory for For Claire's computer
-setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 
 # Specify years to be included in this filtering process
 years = 2013:2019
@@ -59,7 +56,6 @@ for(i in years){
   rm(tmp)
   
   }
-
 
 ```
 
