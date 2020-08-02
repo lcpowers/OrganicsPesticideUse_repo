@@ -9,17 +9,17 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-**The purpose of this Rmarkdown file is to join pesticide use data to the Kern County Agriculture-CDFA shapeile created in the previous Rmarkdown document, to then compare pesticide use  and other environmental characteristics across conventional and organic fields.**  
+**The purpose of this Rmarkdown file is to join pesticide use data to the Kern County Agriculture-CDFA shapefile finalized in RMD 4**  
 
 
 **Notes:**
 
-- In code chunk 5, this document also determines the number of crops being grown on each field. This helps us prevent bias that may arise from pesticide use data associated with fields that have multiple crops [S_STATUS == "M"].
+- In code chunk 5, this document also determines the number of crops being grown on each field. This helps us prevent bias that may arise from fields that have multiple crops [S_STATUS == "M"].
 
 **Output:**
-- Shapefile that includes information from Kern Ag, CDFA, Storie Index (soil), and Pesticide use data in the attribute table
-      * "../R_output/spatial/KernAg_CDFA_pest/",i,"/B50"
-       where 'i' is the year being evaluated
+- Shapefile that includes information from Kern Ag, CDFA, Storie Index (soil), and pesticide use data in the attribute table
+      - ../R_output/spatial/final_organics_data/[YEAR]/all_organics_pest_[YEAR].shp
+
 
 ---
 
@@ -33,26 +33,22 @@ library(stringi)
 library(sf)
 library(fuzzyjoin)
 
-# setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
-
-# Avoid scientific notation in dataframes
+# Avoid scientific notation
 options(scipen = 999) 
 
 # Read in Pesticide Data 
 pest_data_raw = read_dta("../R_input/dta/KernOrgCollapse1319_062920.dta") %>% 
   as.data.frame() 
 
-## Remember to deal with the commodity different but everything else identical issue
-
 # Specify years of interest
 years = 2013:2019
 
-# Specify buffer width being analyzed -- Buffer widths were originally implemented in the Kern Agriculture CDFA Parcel spatial join. 
+# Specify buffer width -- Buffer widths were originally implemented in the Kern Agriculture CDFA Parcel spatial join (RMD 4). 
 buf_width = c(50)
 ```
 
 
-#### 2. Create pesticide use dataframes for each year
+#### 2. Create pesticide use dataframes for each year from original, compiled data set
 ```{r pest_dataframes, message=FALSE}
 
 #### For loop to create dataframes of pesticide use for each year from 2013:2019
@@ -66,46 +62,43 @@ for(i in years){
   
   }
 
-nrow(pest_data_2013)
-n_distinct(pest_data_2013$permitsite,pest_data_2013$commodity)
-# PS_dups_13 = as.data.frame(table(pest_data_2013$permitsite,pest_data_2013$commodity)) %>% filter(Freq>1) %>% mutate(year = 13)
-
-nrow(pest_data_2014)
-n_distinct(pest_data_2014$permitsite, pest_data_2014$commodity)
-# PS_dups_14 = as.data.frame(table(pest_data_2014$permitsite, pest_data_2014$commodity)) %>% filter(Freq>1) %>% mutate(year = 14)
-
-nrow(pest_data_2015)
-n_distinct(pest_data_2015$permitsite,pest_data_2015$commodity)
-# PS_dups_15 = as.data.frame(table(pest_data_2015$permitsite)) %>% filter(Freq>1) %>% mutate(year = 15)
-
-nrow(pest_data_2016)
-n_distinct(pest_data_2016$permitsite,pest_data_2016$commodity)
-# PS_dups_16 = as.data.frame(table(pest_data_2016$permitsite)) %>% filter(Freq>1) %>% mutate(year = 16)
-
-nrow(pest_data_2017)
-n_distinct(pest_data_2017$permitsite,pest_data_2017$commodity)
-# PS_dups_17 = as.data.frame(table(pest_data_2017$permitsite)) %>% filter(Freq>1) %>% mutate(year = 17)
-
-nrow(pest_data_2018)
-n_distinct(pest_data_2018$permitsite,pest_data_2018$commodity)
-# PS_dups_18 = as.data.frame(table(pest_data_2018$permitsite)) %>% filter(Freq>1) %>% mutate(year = 18)
-
-nrow(pest_data_2019)
-n_distinct(pest_data_2019$permitsite,pest_data_2019$commodity)
-# PS_dups_19 = as.data.frame(table(pest_data_2019$permitsite)) %>% filter(Freq>1) %>% mutate(year = 19)
-
-# PS_dups = rbind(PS_dups_13,PS_dups_14,PS_dups_15,PS_dups_16,PS_dups_17)
-# colnames(PS_dups) = c("permitsite","n_dups","year")
+# # Uncomment to see number of distinct permitsite-commodity combinations in each year. Should be the same as the number of rows in the data setfor each year
+# nrow(pest_data_2013)
+# n_distinct(pest_data_2013$permitsite,pest_data_2013$commodity)
+# # PS_dups_13 = as.data.frame(table(pest_data_2013$permitsite,pest_data_2013$commodity)) %>% filter(Freq>1) %>% mutate(year = 13)
+# 
+# nrow(pest_data_2014)
+# n_distinct(pest_data_2014$permitsite, pest_data_2014$commodity)
+# # PS_dups_14 = as.data.frame(table(pest_data_2014$permitsite, pest_data_2014$commodity)) %>% filter(Freq>1) %>% mutate(year = 14)
+# 
+# nrow(pest_data_2015)
+# n_distinct(pest_data_2015$permitsite,pest_data_2015$commodity)
+# # PS_dups_15 = as.data.frame(table(pest_data_2015$permitsite)) %>% filter(Freq>1) %>% mutate(year = 15)
+# 
+# nrow(pest_data_2016)
+# n_distinct(pest_data_2016$permitsite,pest_data_2016$commodity)
+# # PS_dups_16 = as.data.frame(table(pest_data_2016$permitsite)) %>% filter(Freq>1) %>% mutate(year = 16)
+# 
+# nrow(pest_data_2017)
+# n_distinct(pest_data_2017$permitsite,pest_data_2017$commodity)
+# # PS_dups_17 = as.data.frame(table(pest_data_2017$permitsite)) %>% filter(Freq>1) %>% mutate(year = 17)
+# 
+# nrow(pest_data_2018)
+# n_distinct(pest_data_2018$permitsite,pest_data_2018$commodity)
+# # PS_dups_18 = as.data.frame(table(pest_data_2018$permitsite)) %>% filter(Freq>1) %>% mutate(year = 18)
+# 
+# nrow(pest_data_2019)
+# n_distinct(pest_data_2019$permitsite,pest_data_2019$commodity)
+# # PS_dups_19 = as.data.frame(table(pest_data_2019$permitsite)) %>% filter(Freq>1) %>% mutate(year = 19)
+# 
+# # PS_dups = rbind(PS_dups_13,PS_dups_14,PS_dups_15,PS_dups_16,PS_dups_17)
+# # colnames(PS_dups) = c("permitsite","n_dups","year")
 ```
-
-
-Want all/nearly all of the pest data to have a match in the Kern Ag shapefile
 
 #### 3. Read in KernAg_CDFA shapefiles for each year and give unique name
 ```{r get_kernAg}
 
 # Read in KernAg_CDFA (joined) shapefile with appropriate buffer and convert to spatial dataframe
-# Also fixes the commodity column in '18 and '19 where the word "ORGANIC" is truncated in some cells, which effects the permitsite/comm join in the following code chunk
 
 for(i in years){ # For each year...
   for(j in buf_width){ # And each buffer width...
@@ -121,17 +114,18 @@ for(i in years){ # For each year...
     }
 }
 
-# organics_2018_B50$comm = as.character(organics_2018_B50$comm)
-# organics_2018_B50 <- separate(organics_2018_B50,comm,into = c("comm","suf"),sep = "-")
-# organics_2018_B50$suf = ifelse(str_detect(string = organics_2018_B50$suf, pattern = "OR"), "ORGANIC", organics_2018_B50$suf)
-# organics_2018_B50$comm = ifelse(!is.na(organics_2018_B50$suf),paste0(organics_2018_B50$comm,"-",organics_2018_B50$suf),organics_2018_B50$comm)
-# organics_2018_B50 = dplyr::select(organics_2018_B50, -suf)
-# 
-# organics_2019_B50$comm = as.character(organics_2019_B50$comm)
-# organics_2019_B50 <- separate(organics_2019_B50,comm,into = c("comm","suf"),sep = "-")
-# organics_2019_B50$suf = ifelse(str_detect(string = organics_2019_B50$suf, pattern = "OR"), "ORGANIC", organics_2019_B50$suf)
-# organics_2019_B50$comm = ifelse(!is.na(organics_2019_B50$suf),paste0(organics_2019_B50$comm,"-",organics_2019_B50$suf),organics_2019_B50$comm)
-# organics_2019_B50 = dplyr::select(organics_2019_B50, -suf)
+# Uncomment to fix the commodity column in '18 and '19 where the word "ORGANIC" is truncated in some cells, which effects the permitsite/comm join in the following code chunk
+organics_2018_B50$comm = as.character(organics_2018_B50$comm)
+organics_2018_B50 <- separate(organics_2018_B50,comm,into = c("comm","suf"),sep = "-")
+organics_2018_B50$suf = ifelse(str_detect(string = organics_2018_B50$suf, pattern = "OR"), "ORGANIC", organics_2018_B50$suf)
+organics_2018_B50$comm = ifelse(!is.na(organics_2018_B50$suf),paste0(organics_2018_B50$comm,"-",organics_2018_B50$suf),organics_2018_B50$comm)
+organics_2018_B50 = dplyr::select(organics_2018_B50, -suf)
+
+organics_2019_B50$comm = as.character(organics_2019_B50$comm)
+organics_2019_B50 <- separate(organics_2019_B50,comm,into = c("comm","suf"),sep = "-")
+organics_2019_B50$suf = ifelse(str_detect(string = organics_2019_B50$suf, pattern = "OR"), "ORGANIC", organics_2019_B50$suf)
+organics_2019_B50$comm = ifelse(!is.na(organics_2019_B50$suf),paste0(organics_2019_B50$comm,"-",organics_2019_B50$suf),organics_2019_B50$comm)
+organics_2019_B50 = dplyr::select(organics_2019_B50, -suf)
 
 ```
 
@@ -140,7 +134,7 @@ for(i in years){ # For each year...
 ```{r warning=FALSE}
 for(i in years){
   
-  # Find the data.frame that was previously read in and corresponds 
+  # Find the Kern Ag-CDFA data.frame that was previously read in and corresponds 
   # to year.i and buffer_width.j
   tmp_ag = eval(as.name(paste0("organics_",i,"_B",j)))  %>% 
     as.data.frame() 
@@ -151,7 +145,7 @@ for(i in years){
   # Check to make sure all permits are 7 characters long -- check all years in RMD 6 and true: all permits = 7 characters long
   # nchars = as.data.frame(table(nchar(tmp_ag$permit)))
   
-  # Get temp copy of the pesticide use data.frame that corresponds to pest_data_year.i
+  # Get tmp copy of the pesticide use data.frame that corresponds to pest_data_year.i
   tmp_pst = eval(as.name(paste0("pest_data_",i)))
   
   # Left join the pesticide use data.frame to the Agriculture shapefile on 'permitsite' and 'commodity' -- use this to data.frame to filter out fuzzy joins
@@ -165,8 +159,8 @@ for(i in years){
    # 2015: 66
    # 2016: 80
    # 2017: 66
-   # 2018: 109
-   # 2019: 142
+   # 2018: 85
+   # 2019: 99
  
   # Find out how much of the ag data didn't have a pest match
   anti_joined_ag = anti_join(tmp_ag,tmp_pst, by = c("permitsite"), suffix = c(".ag", ".pur"))

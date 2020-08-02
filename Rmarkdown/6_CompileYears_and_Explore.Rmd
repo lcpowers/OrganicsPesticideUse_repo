@@ -7,18 +7,27 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+**The purpose of this Rmarkdown file is to compile the finalized datasets for all years, and write output tabular and shapefiles**  
+
+**Output:**
+- ../R_output/CSV/compiled_organics1319.dta
+- ../R_output/CSV/compiled_organics1319.csv
+- ../R_output/spatial/final_organics_data/all_years/all_years_organics.shp
+
+---
+
 #### 1. Get Packages, set working directory, etc. 
 ```{r packages}
 library(tidyverse)
 library(rgdal)
 library(sf)
 
-# setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
+# Read in pesticide use data
 pest_data_raw = read_dta("../R_input/dta/KernFieldCrops1319.dta") %>% 
   as.data.frame()
 ```
 
-#### 2. Read in data (shapefile) for each year, and turn into df to rbind in next chunk
+#### 2. Read in finalized data (shapefile) for each year, and turn into dataframe to rbind in next chunk
 ```{r data}
 
 years = 2013:2019
@@ -36,13 +45,15 @@ for(i in years){
 
 ```
 
-# Redo agroclass join to 2019
+#### 3. Redo agroclass join to 2019
 ```{r fix_2019_agroclassJoin}
+
+##### Fix the rows with '-' at the end of the comm column #####
 
 # Convert comm_edit column from factor to character
 organics_df_2019$comm_dt=as.character(organics_df_2019$comm_dt)
 
-# Fix the rows with '-' at the end of the comm column. 2019 is the worst
+# Separate edited comm column (comm_dt) by dash
 organics_df_2019 = organics_df_2019 %>%
     separate(col = "comm_dt",
              into = c("COMM_x","COMM_y"),
@@ -50,95 +61,140 @@ organics_df_2019 = organics_df_2019 %>%
              remove = FALSE)
 
 # Get rid of '-' where it exists at the end of commodity strings
-organics_df_2019$comm_dt = ifelse((organics_df_2019$COMM_y==""|organics_df_2019$COMM_y=="O"|is.na(organics_df_2019$COMM_y)),organics_df_2019$COMM_x,organics_df_2019$comm_dt)
+organics_df_2019$comm_dt = ifelse((organics_df_2019$COMM_y==""| # If there is a 0 , "", or NA in the comm_y column from above
+                                     organics_df_2019$COMM_y=="O"|
+                                     is.na(organics_df_2019$COMM_y)),
+                                  organics_df_2019$COMM_x, # Then comm equals the value in comm_x
+                                  organics_df_2019$comm_dt) # Otherwise it equals the comm_dt column as is
 
-## Fix 2019 commcode/agroclass issue, which seems to mainly result from the weird, truncated -ORGANIC in some columns. Just join the two based on comm_edit
+## Read in agroclass data
 agro_class <- read_csv("../R_input/CSV/Kern_AG/comm_subgroups.csv")
+
+## Find 2019 rows that have NA in the agroclass column
 missing_agrcls = filter(organics_df_2019,is.na(agrclss))
 # 218 before
 
+## Rejoin 2019 dataframe with updated comm column to agroclass data.set
 organics_df_2019 = left_join(x = organics_df_2019,y = agro_class, by = c("comm_dt" = "commodity"))
+
+# See how many still have NA values
 missing_agrcls = filter(organics_df_2019,is.na(agroclass))
 # 141 after
 
+# Look at what crop types have NA values
 data.frame(table(organics_df_2019$comm_dt[is.na(organics_df_2019$agroclass)])) %>% 
   arrange(-Freq)
 
+# 
 organics_df_2019 = organics_df_2019 %>% 
-  dplyr::select(permtst,permit,s_stats,p_stats,permitt,commdty,comm_cd,
-                "agrclss" = agroclass, "genus" = genus.y, "family" = family.y,comm_dt,
-                acres,soil_q,apn,trs_nly,trs_rgP,cdf_rgn,comm_rg,
-                prmtt_r,all_rgn,year,permitn,locatin,N_crps_,hectars, geometry)
+  dplyr::select(permtst,
+                permit,
+                s_stats,
+                p_stats,
+                permitt,
+                commdty,
+                comm_cd,
+                "agrclss" = agroclass, 
+                "genus" = genus.y, 
+                "family" = family.y, 
+                comm_dt,
+                acres,soil_q,
+                apn,trs_nly,
+                trs_rgP,
+                cdf_rgn,
+                comm_rg,
+                prmtt_r,
+                all_rgn,
+                year,
+                permitn,
+                locatin,
+                N_crps_,
+                hectars, 
+                geometry)
 
 # Check that columns are in the same order and have the same names are other years, for the rbind
 colnames(organics_df_2013) == colnames(organics_df_2019)
 ```
 
-#### 3. CSV OUTPUT: Compile (rbind) years into one df
+#### 4. CSV OUTPUT: Compile (rbind) years into one df
 ```{r compile_for_csv}
 
+# Initiate dataframe using 2013 dataset
 all_years_df <- data.frame(matrix(ncol=ncol(organics_df_2013)-1,nrow=0))
+
+# Rename columns to match 2013 dataset
 colnames(all_years_df) <- colnames(organics_df_2013)[1:ncol(organics_df_2013)-1]
 
+# Rbind all years
 for(i in years){
   
+  # Dataframe for year i
   tmp <- eval(as.name(paste0("organics_df_",i))) %>% 
     as.data.frame() %>% 
     dplyr::select(-geometry)
   
+  # Fill in year column 
   tmp$year = i
   
+  # Rbind to final dataframe
   all_years_df = rbind(all_years_df,tmp)
   
+  # Remove tmp data.frame
   remove(tmp)
   
 }
 
-# Check
+# Look at number of rows for each year
 table(all_years_df$year)
 # 2013  2014  2015  2016  2017  2018  2019 
 # 13997 13906 14057 14017 14287 14431 14841 
 
-### This should throw an error because it's not enough column names. Need to add in P_status wherever it ends up.
+## Rename columns with full names
 colnames(all_years_df) = c("permitsite","ag_permit","s_status","p_status","permittee","comm_original","comm_code","agroclass","genus","family",
                            "comm_edit","acres","soil_quality","apn_org","trsonly_org","trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org",
                            "all_org","year","pur_permit","pur_site","n_crops","hectares")
 
+# Write output dta and csv files
 write_dta(all_years_df, "../R_output/CSV/compiled_organics1319.dta")
 write_csv(all_years_df, "../R_output/CSV/compiled_organics1319.csv")
 
-final_output = read_csv("../R_output/CSV/compiled_organics1319.csv")
-sum(final_output$apn_org)
 ```
 
-#### Do the same as above without removing geometry then compile into single shapefile
+#### 5. Do the same as above without removing geometry then compile into single shapefile
 ```{r compile_for_shp}
 
-years = 2013:2019
-
+# Initiate dataframe using 2013 dataset
 all_years_shp <- organics_df_2013
-all_years_shp$year = 2013
-years = 2014:2019
+all_years_shp$year = 2013 # Fill in year
+
+# Years to loop through
+years = 2014:2019 
 
 for(i in years){
   
+  # Get dataframe for year i
   tmp <- eval(as.name(paste0("organics_df_",i)))
   
+  # Fill in year
   tmp$year = i
   
+  # R bind to compiled dataset
   all_years_shp = rbind(all_years_shp,tmp)
   
+  # Remove tmp dataframe
   remove(tmp)
   
 }
 
-# Check
+# Check the number of rows in each year
 table(all_years_shp$year)
 
+# Rename columns
 colnames(all_years_shp) = c("permitsite","ag_permit","s_status","p_status","permittee","comm_original","comm_code","agroclass","genus","family",
                            "comm_edit","acres","soil_quality","apn_org","trsonly_org","trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org",
                            "all_org","year","pur_permit","pur_site","n_crops","hectares", "geometry")
 
+# Write output shapefile
 writeOGR(as(all_years_shp,"Spatial"),
          dsn = "../R_output/spatial/final_organics_data/all_years",
          layer = "all_years_organics",
@@ -147,7 +203,7 @@ writeOGR(as(all_years_shp,"Spatial"),
 ```
 
 
-#### 5. Visualize some data
+#### 5. Visualize some data 
 
 Organics per year
 ```{r orgs_per_year}
