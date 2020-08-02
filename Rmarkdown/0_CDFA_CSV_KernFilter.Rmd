@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 **Notes:**
 
-The data being read in with the read_csv() function is the original CDFA data. In the original data, years 2013-2017 were seperated by tabs in the same excel (.xcls) sheet. Prior to being read in to this Rmarkdown document, each tab was made into it's own individual .csv file in Excel becase R does not deal with .xcls sheets as well, especially those with multiple tabs.
+The data being read in with the read_csv() function is the original CDFA data. In the original data, years 2013-2017 were separated by tabs in the same Excel (.xcls) sheet. Prior to being read in to this Rmarkdown document, each tab was made into it's own individual .csv file in Excel. Years 2018 and 2019 were received in PDF format. We used Adobe tools to convert the PDFs to .csv files. No edits were made to the data. 
 
 **Output:**
 
@@ -23,7 +23,6 @@ The data being read in with the read_csv() function is the original CDFA data. I
 ---
 
 #### 1. Read in CSVs, filter dataframe for Kern County, and write export csv
-The data being read in with the read_csv() function is from the original CDFA data. Years 2013-2017 were separated by tabs in the same excel (.xls) sheet. Prior to being read in to this Rmarkdown document, each tab was converted into an individual .csv file in Excel because R does not deal with .xls sheets well, especially those with multiple tabs. The same was done with 2017-2019 but separately as the data was received at a later date and in a different format. Data for 2017-2019 was supplied in PDF format, was converted to excel xlsx and then csv format. Will be read in here separate.
 
 ```{r kern_filter_loop, message=FALSE, warning=FALSE}
 library(tidyverse)

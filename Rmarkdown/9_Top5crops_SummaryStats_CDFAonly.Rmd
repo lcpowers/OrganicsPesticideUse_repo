@@ -11,36 +11,46 @@ knitr::opts_chunk$set(echo = TRUE)
 
 #### 1. Load packages and data
 ```{r}
-library(rgdal)
-library(sf)
 library(tidyverse)
-library(rgdal)
+library(haven)
 # setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 options(scipen = 9999)
 
 ### Read in complete shapefile and convert to data.frame. Removes geometry column, which is not needed in this RMD.
 
-input_df = readOGR("../R_output/spatial/final_organics_data/all_years/all_years_organics.shp") %>% 
-  as.data.frame()
+# input_df = read_csv("../R_output/CSV/compiled_organics1319.csv") 
+input_df = read_dta("../R_input/dta/organicAnalysisPUR copy.dta")
+colnames(input_df)
 
 ```
 
 #### 2. Filter data.frame and keep only the 5 most common organic crops from 2013:2017
 ```{r top5_crops}
 # CDFA Organic Column
-
-input_df$comm_dt = as.factor(input_df$comm_dt)
+org_colname = "pur_cdfa_org"
+comm_colname = "agroclass"
 
 input_df_fltr = input_df %>% 
-     group_by(agrclss) %>% 
+     group_by(eval(as.name(comm_colname))) %>% 
      summarise(total_fields = n(),
-               organic_fields = sum(cdfa_rg),
-               conv_fields = n()-sum(cdfa_rg)) %>% 
-  filter(organic_fields > 9 & conv_fields > 9) %>% 
+               organic_fields = sum(eval(as.name(org_colname))),
+               conv_fields = n()-sum(eval(as.name(org_colname)))) %>% 
+  filter(organic_fields > 0 & conv_fields > 0) %>% 
   arrange(-organic_fields)
 
-common_agrclss = as.character(input_df_fltr$agrclss)
-top5_agrclss = as.character(head(input_df_fltr$agrclss,5))
+common_crops = as.character(input_df_fltr[1])
+top5_crops = as.character(head(input_df_fltr[1],5))
+
+zero_fltr = filter(input_df, KgPestAI == 0)
+
+table(input_df$pur_cdfa_org)
+table(zero_fltr$pur_cdfa_org)
+
+20553/90553
+5112/8983
+
+
+zero_agro = as.data.frame(table(zero_fltr$agroclass))
 
 # crop1 = as.character(top_crops[1])
 # crop2 = as.character(top_crops[2])
@@ -52,13 +62,13 @@ top5_agrclss = as.character(head(input_df_fltr$agrclss,5))
 #### 4. Initialize empty matrices for organic and conventional crops
 ```{r initialize_matrices}
 
-O_matrix = matrix(ncol = 9, nrow = 7)
-colnames(O_matrix) = c("total_fields","avg_fldsz","soil","Ann_KgAI_perH","birds","bees", "mmls","aqsp","reps")
-rownames(O_matrix) = c("overall","sharedcrops",top5_agrclss)
+O_matrix = matrix(ncol = 3, nrow = 7)
+colnames(O_matrix) = c("total_fields","avg_fldsz","soil") #,"Ann_KgAI_perH","birds","bees", "mmls","aqsp","reps")
+rownames(O_matrix) = c("overall","sharedcrops",top5_crops)
 
-C_matrix = matrix(ncol = 9, nrow = 7)
-colnames(C_matrix) = c("total_fields","avg_fldsz","soil","Ann_KgAI_perH","birds","bees", "mmls","aqsp","reps")
-rownames(C_matrix) = c("overall","sharedcrops",top5_agrclss)
+C_matrix = matrix(ncol = 3, nrow = 7)
+colnames(C_matrix) = c("total_fields","avg_fldsz","soil") #,"Ann_KgAI_perH","birds","bees", "mmls","aqsp","reps")
+rownames(C_matrix) = c("overall","sharedcrops",top5_crops)
 
 ```
 
@@ -67,57 +77,57 @@ rownames(C_matrix) = c("overall","sharedcrops",top5_agrclss)
 
 # For all ORGANIC fields
 org_df = input_df %>% 
-  dplyr::filter(cdfa_rg == 1)
+  dplyr::filter(cdfa_org == 1)
 rowi = 1
 
 O_matrix[rowi,1] = nrow(org_df)
-O_matrix[rowi,2] = mean(org_df$hectars) # Average Field Size
-O_matrix[rowi,3] = mean(org_df$sl_qlty, na.rm = TRUE) # Average Storie Index value
-O_matrix[rowi,4] = sum(org_df$KgPstAI)/sum(org_df$hectars) # Average Kg AI per acre
-O_matrix[rowi,5] = sum(org_df$KgABrds)/sum(org_df$hectars) # Average kg AI toxic to birds per acre
-O_matrix[rowi,6] = sum(org_df$KgAiBes)/sum(org_df$hectars) # Average kg AI toxic to bees per acre
-O_matrix[rowi,7] = sum(org_df$KgAMmml)/sum(org_df$hectars) # Average kg AI toxic to mammals per acre
-O_matrix[rowi,8] = sum(org_df$KgAAqSp)/sum(org_df$hectars) # Average kg AI toxic to aquatic species per acre
-O_matrix[rowi,9] = sum(org_df$KgARptA)/sum(org_df$hectars) # Average kg AI toxic to reptiles per acre
+O_matrix[rowi,2] = mean(org_df$hectares) # Average Field Size
+O_matrix[rowi,3] = mean(org_df$soil_quality, na.rm = TRUE) # Average Storie Index value
+# O_matrix[rowi,4] = sum(org_df$KgPstAI)/sum(org_df$hectares) # Average Kg AI per acre
+# O_matrix[rowi,5] = sum(org_df$KgABrds)/sum(org_df$hectares) # Average kg AI toxic to birds per acre
+# O_matrix[rowi,6] = sum(org_df$KgAiBes)/sum(org_df$hectares) # Average kg AI toxic to bees per acre
+# O_matrix[rowi,7] = sum(org_df$KgAMmml)/sum(org_df$hectares) # Average kg AI toxic to mammals per acre
+# O_matrix[rowi,8] = sum(org_df$KgAAqSp)/sum(org_df$hectares) # Average kg AI toxic to aquatic species per acre
+# O_matrix[rowi,9] = sum(org_df$KgARptA)/sum(org_df$hectares) # Average kg AI toxic to reptiles per acre
 
 # For crops that occur on at least 10 organic fields and 10 conventional fields
 
 df = org_df %>% 
-  filter(agrclss %in% common_agrclss)
+  filter(comm_edit %in% common_crops)
 rowi = 2
 
 O_matrix[rowi,1] = nrow(df)
-O_matrix[rowi,2] = mean(df$hectars) # Average Field Size
-O_matrix[rowi,3] = mean(df$sl_qlty, na.rm = TRUE) # Average Storie Index value
-O_matrix[rowi,4] = sum(df$KgPstAI)/sum(df$hectars) # Average Kg AI per acre
-O_matrix[rowi,5] = sum(df$KgABrds)/sum(df$hectars) # Average kg AI toxic to birds per acre
-O_matrix[rowi,6] = sum(df$KgAiBes)/sum(df$hectars) # Average kg AI toxic to bees per acre
-O_matrix[rowi,7] = sum(df$KgAMmml)/sum(df$hectars) # Average kg AI toxic to mammals per acre
-O_matrix[rowi,8] = sum(df$KgAAqSp)/sum(df$hectars) # Average kg AI toxic to aquatic species per acre
-O_matrix[rowi,9] = sum(df$KgARptA)/sum(df$hectars) # Average kg AI toxic to reptiles per acre
+O_matrix[rowi,2] = mean(df$hectares) # Average Field Size
+O_matrix[rowi,3] = mean(df$soil_quality, na.rm = TRUE) # Average Storie Index value
+# O_matrix[rowi,4] = sum(df$KgPstAI)/sum(df$hectares) # Average Kg AI per acre
+# O_matrix[rowi,5] = sum(df$KgABrds)/sum(df$hectares) # Average kg AI toxic to birds per acre
+# O_matrix[rowi,6] = sum(df$KgAiBes)/sum(df$hectares) # Average kg AI toxic to bees per acre
+# O_matrix[rowi,7] = sum(df$KgAMmml)/sum(df$hectares) # Average kg AI toxic to mammals per acre
+# O_matrix[rowi,8] = sum(df$KgAAqSp)/sum(df$hectares) # Average kg AI toxic to aquatic species per acre
+# O_matrix[rowi,9] = sum(df$KgARptA)/sum(df$hectares) # Average kg AI toxic to reptiles per acre
 
-for(i in 1:length(top5_agrclss)){
+for(i in 1:length(top5_crops)){
   
   df = org_df %>% 
-    filter(agrclss == top5_agrclss[i])
+    filter(comm_edit == top5_crops[i])
   
-  print(top5_agrclss[i])
+  print(top5_crops[i])
   
   O_matrix[i+2,1] = nrow(df)
-  O_matrix[i+2,2] = mean(df$hectars) # Average Field Size
-  O_matrix[i+2,3] = mean(df$sl_qlty, na.rm = TRUE) # Average Storie Index value
-  O_matrix[i+2,4] = sum(df$KgPstAI)/sum(df$hectars) # Average Kg AI per acre
-  O_matrix[i+2,5] = sum(df$KgABrds)/sum(df$hectars) # Average kg AI toxic to birds per acre
-  O_matrix[i+2,6] = sum(df$KgAiBes)/sum(df$hectars) # Average kg AI toxic to bees per acre
-  O_matrix[i+2,7] = sum(df$KgAMmml)/sum(df$hectars) # Average kg AI toxic to mammals per acre
-  O_matrix[i+2,8] = sum(df$KgAAqSp)/sum(df$hectars) # Average kg AI toxic to aquatic species per acre
-  O_matrix[i+2,9] = sum(df$KgARptA)/sum(df$hectars) # Average kg AI toxic to reptiles per acre
+  O_matrix[i+2,2] = mean(df$hectares) # Average Field Size
+  O_matrix[i+2,3] = mean(df$soil_quality, na.rm = TRUE) # Average Storie Index value
+  # O_matrix[i+2,4] = sum(df$KgPstAI)/sum(df$hectares) # Average Kg AI per acre
+  # O_matrix[i+2,5] = sum(df$KgABrds)/sum(df$hectares) # Average kg AI toxic to birds per acre
+  # O_matrix[i+2,6] = sum(df$KgAiBes)/sum(df$hectares) # Average kg AI toxic to bees per acre
+  # O_matrix[i+2,7] = sum(df$KgAMmml)/sum(df$hectares) # Average kg AI toxic to mammals per acre
+  # O_matrix[i+2,8] = sum(df$KgAAqSp)/sum(df$hectares) # Average kg AI toxic to aquatic species per acre
+  # O_matrix[i+2,9] = sum(df$KgARptA)/sum(df$hectares) # Average kg AI toxic to reptiles per acre
 
 }
 
 O_df = as.data.frame(round(O_matrix,4))
 O_df$rownms = row.names(O_matrix)
-write_csv(O_df,"../R_output/CSV/organic_summary_table_a.csv")
+write_csv(O_df,"../R_output/CSV/organic_summary_table.csv")
 ```
 
 #### 6. Fill in Conventional Matrix
@@ -125,58 +135,58 @@ write_csv(O_df,"../R_output/CSV/organic_summary_table_a.csv")
 
 # For all CONVENTIONAL fields
 conv_df = input_df %>% 
-  dplyr::filter(cdfa_rg == 0)
+  dplyr::filter(cdfa_org == 0)
 
 rowi = 1
 
 C_matrix[rowi,1] = nrow(conv_df)
-C_matrix[rowi,2] = mean(conv_df$hectars) # Average Field Size
-C_matrix[rowi,3] = mean(conv_df$sl_qlty, na.rm = TRUE) # Average Storie Index value
-C_matrix[rowi,4] = sum(conv_df$KgPstAI)/sum(conv_df$hectars) # Average Kg AI per acre
-C_matrix[rowi,5] = sum(conv_df$KgABrds)/sum(conv_df$hectars) # Average kg AI toxic to birds per acre
-C_matrix[rowi,6] = sum(conv_df$KgAiBes)/sum(conv_df$hectars) # Average kg AI toxic to bees per acre
-C_matrix[rowi,7] = sum(conv_df$KgAMmml)/sum(conv_df$hectars) # Average kg AI toxic to mammals per acre
-C_matrix[rowi,8] = sum(conv_df$KgAAqSp)/sum(conv_df$hectars) # Average kg AI toxic to aquatic species per acre
-C_matrix[rowi,9] = sum(conv_df$KgARptA)/sum(conv_df$hectars) # Average kg AI toxic to reptiles per acre
+C_matrix[rowi,2] = mean(conv_df$hectares) # Average Field Size
+C_matrix[rowi,3] = mean(conv_df$soil_quality, na.rm = TRUE) # Average Storie Index value
+# C_matrix[rowi,4] = sum(conv_df$KgPstAI)/sum(conv_df$hectares) # Average Kg AI per acre
+# C_matrix[rowi,5] = sum(conv_df$KgABrds)/sum(conv_df$hectares) # Average kg AI toxic to birds per acre
+# C_matrix[rowi,6] = sum(conv_df$KgAiBes)/sum(conv_df$hectares) # Average kg AI toxic to bees per acre
+# C_matrix[rowi,7] = sum(conv_df$KgAMmml)/sum(conv_df$hectares) # Average kg AI toxic to mammals per acre
+# C_matrix[rowi,8] = sum(conv_df$KgAAqSp)/sum(conv_df$hectares) # Average kg AI toxic to aquatic species per acre
+# C_matrix[rowi,9] = sum(conv_df$KgARptA)/sum(conv_df$hectares) # Average kg AI toxic to reptiles per acre
 
 # For crops that occur on at least 10 organic fields and 10 conventional fields
 
 df = conv_df %>% 
-  filter(agrclss %in% common_agrclss)
+  filter(comm_edit %in% common_crops)
 rowi = 2
 
 C_matrix[rowi,1] = nrow(df)
-C_matrix[rowi,2] = mean(df$hectars) # Average Field Size
-C_matrix[rowi,3] = mean(df$sl_qlty, na.rm = TRUE) # Average Storie Index value
-C_matrix[rowi,4] = sum(df$KgPstAI)/sum(df$hectars) # Average Kg AI per acre
-C_matrix[rowi,5] = sum(df$KgABrds)/sum(df$hectars) # Average kg AI toxic to birds per acre
-C_matrix[rowi,6] = sum(df$KgAiBes)/sum(df$hectars) # Average kg AI toxic to bees per acre
-C_matrix[rowi,7] = sum(df$KgAMmml)/sum(df$hectars) # Average kg AI toxic to mammals per acre
-C_matrix[rowi,8] = sum(df$KgAAqSp)/sum(df$hectars) # Average kg AI toxic to aquatic species per acre
-C_matrix[rowi,9] = sum(df$KgARptA)/sum(df$hectars) # Average kg AI toxic to reptiles per acre
+C_matrix[rowi,2] = mean(df$hectares) # Average Field Size
+C_matrix[rowi,3] = mean(df$soil_quality, na.rm = TRUE) # Average Storie Index value
+# C_matrix[rowi,4] = sum(df$KgPstAI)/sum(df$hectares) # Average Kg AI per acre
+# C_matrix[rowi,5] = sum(df$KgABrds)/sum(df$hectares) # Average kg AI toxic to birds per acre
+# C_matrix[rowi,6] = sum(df$KgAiBes)/sum(df$hectares) # Average kg AI toxic to bees per acre
+# C_matrix[rowi,7] = sum(df$KgAMmml)/sum(df$hectares) # Average kg AI toxic to mammals per acre
+# C_matrix[rowi,8] = sum(df$KgAAqSp)/sum(df$hectares) # Average kg AI toxic to aquatic species per acre
+# C_matrix[rowi,9] = sum(df$KgARptA)/sum(df$hectares) # Average kg AI toxic to reptiles per acre
 
-for(i in 1:length(top5_agrclss)){
+for(i in 1:length(top5_crops)){
   
   df = conv_df %>% 
-    filter(comm_dt == top5_agrclss[i])
+    filter(comm_edit == top5_crops[i])
   
-  print(top5_agrclss[i])
+  print(top5_crops[i])
   
   C_matrix[i+2,1] = nrow(df)
-  C_matrix[i+2,2] = mean(df$hectars) # Average Field Size
-  C_matrix[i+2,3] = mean(df$sl_qlty, na.rm = TRUE) # Average Storie Index value
-  C_matrix[i+2,4] = sum(df$KgPstAI)/sum(df$hectars) # Average Kg AI per acre
-  C_matrix[i+2,5] = sum(df$KgABrds)/sum(df$hectars) # Average kg AI toxic to birds per acre
-  C_matrix[i+2,6] = sum(df$KgAiBes)/sum(df$hectars) # Average kg AI toxic to bees per acre
-  C_matrix[i+2,7] = sum(df$KgAMmml)/sum(df$hectars) # Average kg AI toxic to mammals per acre
-  C_matrix[i+2,8] = sum(df$KgAAqSp)/sum(df$hectars) # Average kg AI toxic to aquatic species per acre
-  C_matrix[i+2,9] = sum(df$KgARptA)/sum(df$hectars) # Average kg AI toxic to reptiles per acre
+  C_matrix[i+2,2] = mean(df$hectares) # Average Field Size
+  C_matrix[i+2,3] = mean(df$soil_quality, na.rm = TRUE) # Average Storie Index value
+  # C_matrix[i+2,4] = sum(df$KgPstAI)/sum(df$hectares) # Average Kg AI per acre
+  # C_matrix[i+2,5] = sum(df$KgABrds)/sum(df$hectares) # Average kg AI toxic to birds per acre
+  # C_matrix[i+2,6] = sum(df$KgAiBes)/sum(df$hectares) # Average kg AI toxic to bees per acre
+  # C_matrix[i+2,7] = sum(df$KgAMmml)/sum(df$hectares) # Average kg AI toxic to mammals per acre
+  # C_matrix[i+2,8] = sum(df$KgAAqSp)/sum(df$hectares) # Average kg AI toxic to aquatic species per acre
+  # C_matrix[i+2,9] = sum(df$KgARptA)/sum(df$hectares) # Average kg AI toxic to reptiles per acre
 
   }
 
 C_df = as.data.frame(round(C_matrix,4))
 C_df$rownms = row.names(C_matrix)
-write_csv(C_df,"../R_output/CSV/conventional_summary_table_a.csv")
+write_csv(C_df,"../R_output/CSV/conventional_summary_table.csv")
 
 ```
 

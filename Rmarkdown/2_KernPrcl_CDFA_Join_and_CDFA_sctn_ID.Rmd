@@ -26,9 +26,6 @@ library(tidyverse) # For general data wrangling and operations on dataframes
 library(rgdal) # GDAL for R. 
 library(sf) # For simple features operations in R. Allows the attribute table of a shapefile to be converted to a dataframe structure while maintaining the geometry for easy data view and operations. 
 
-# Set working directory for For Claire's computer
-setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown")
-
 # Bring in function stored in the '3_KernCountyParcel_CDFA_join.R' script. If editing that 
 # function, check the box that says 'source on save' to upload that latest version of the 
 # function in this Rmarkdown document
@@ -130,8 +127,8 @@ for(i in yrs){
     group_by(Company,trs) %>%
     summarise(count = n())
   
-  print(i)
-  print(table(cdfa_trs_summary$Company))
+  # print(i)
+  # print(table(cdfa_trs_summary$Company))
   
   # Merge CDFA to PLSS sections on the TRS columns created above
   cdfa_sections = merge(kern_sections_slct,cdfa_trs_df,by = "trs")
@@ -140,17 +137,21 @@ for(i in yrs){
   cdfa_sections_unique = distinct(cdfa_sections,.keep_all = T) %>% 
     dplyr::select(trs,company = "Company",geometry) %>% 
     as(.,"Spatial")
-
+  
   #Layer Name
   cdfalayer=paste0("cdfa_sections_",i)
   
   writeOGR(cdfa_sections_unique,
            dsn = outputfile,
-           layer =cdfalayer,
+           layer = cdfalayer,
            driver = "ESRI Shapefile",
            overwrite = TRUE)
   
   # Remove CDFA dataframes to make sure there isn't crossover between years
+  
+  cdfa_sections_df = as.data.frame(cdfa_sections_unique)
+  
+  assign(paste0("cdfa_trs_",i),cdfa_sections_df)
   
   rm(cdfa_sections)
   rm(cdfa_sections_unique)

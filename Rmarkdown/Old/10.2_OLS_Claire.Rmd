@@ -23,6 +23,16 @@ Read in data
 
 data = read_csv("../R_output/CSV/compiled_organics1317.csv")
 
+data16 = data %>% 
+  filter(year == 2016)
+
+final_prmtst_df = as.data.frame(table(data16$permitsite))
+
+og_KernAg = read_sf("../R_input/spatial/kern_AG_shp/kern2017/kern2017.shp")
+
+og_pestUse_17 = read_csv("../R_input/CSV/PesticideUse/KernOrgCollapse1317.csv") %>% 
+  filter(year == 2017)
+
 soil = data %>% 
   group_by(all_org) %>% 
   summarise(mean_soil = mean(soil_quality),
@@ -84,4 +94,22 @@ summary(lm_testNA)
 summary(lm_test_fltr)
 ```
 
+### Repeating Ashley's Stata Code
+```{r repeat_Ashley}
+
+data_collapse = data %>% 
+  group_by(year,permit) %>% 
+  summarize(farmSz = sum(acres),
+            kghaPstPrd = mean(KgPestPrd/hectares))
+            
+            # kghaPstAI = KgPestAI/hectares,
+            # kghaMammal = KgAiMammal/hectares,
+            # kghaBee = KgAiBees/hectares,
+            # kghaFish = KgAiFish/hectares,
+            # kgheBird = KgAiBirds/hectares,
+            # kghaGrdWat = KgAiGrndWat/hectares,
+            # kghaDrift = KgAiDrift/hectares,
+            # kghaInsOnly = KgAInsectOnly/hectares)
+
+```
 

@@ -54,9 +54,9 @@ top_crops_df = organics_shp %>%
   group_by(comm_dt) %>% # Group by COMM column
   summarise(total_fields = n(),
             total_orgFields = sum(cdfa_rg),
-            total_convFields = n() - sum(cdfa_rg)) %>% # Sum the CDFA column. This tells us how much organic fields of each crop type there are
+            total_convFields = n() - sum(cdfa_rg)) %>% # Sum the CDFA column. This tells us how many organic fields of each crop type there are
   arrange(-total_orgFields) %>% # Sort the table in descending order of number of fields per crop type
-  filter(total_orgFields >= 10 & total_convFields >= 10) # Get rid of crops with fewer than ten organic fields
+  filter(total_orgFields >= 0 & total_convFields >= 0) # Get rid of crops with fewer than ten organic fields
 
 comparison_crops = as.character(top_crops_df$comm_dt) # Create a new vector with names of crops with at least ten fields
 comparison_crops # Display in an Rmarkdown document

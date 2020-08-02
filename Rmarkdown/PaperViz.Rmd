@@ -1,0 +1,27 @@
+---
+title: "Paper Visualizations"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Packages, data, settings
+```{r}
+library(tidyverse)
+options(scipen = 9999)
+
+### Read in complete shapefile and convert to data.frame. Removes geometry column, which is not needed in this RMD.
+
+input_df = read_csv("../R_output/CSV/compiled_organics1319.csv") 
+```
+
+Average conventional vs. org soilquality by year
+```{r}
+
+
+
+
+```
+
