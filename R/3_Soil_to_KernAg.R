@@ -52,4 +52,5 @@ Soil_to_KernAg_fun = function(year){
            driver = "ESRI Shapefile",
            overwrite_layer = TRUE)
   
-  }
+}
+

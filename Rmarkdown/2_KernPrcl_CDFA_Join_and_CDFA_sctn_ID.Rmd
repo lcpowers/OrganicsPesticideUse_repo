@@ -82,10 +82,13 @@ kern_sections_slct$trs <- str_sub(kern_sections_slct$MTRS,2,9)
 
 yrs = 2013:2019
 
+all_trs = data.frame(matrix(ncol = 2))
+colnames(all_trs) = c("uniq_trs","year")
+
 for(i in yrs){
   
   # Assign output file name
-  outputfile=paste0("../R_output/spatial/CDFA_PLSS_sections/",i)
+  outputfile = paste0("../R_output/spatial/CDFA_PLSS_sections/",i)
   
   # Create output file
   dir.create(outputfile)
@@ -126,7 +129,7 @@ for(i in yrs){
     as(.,"Spatial")
   
   # Define the layer name for year i
-  cdfalayer=paste0("cdfa_sections_",i)
+  cdfalayer = paste0("cdfa_sections_",i)
   
   # Write output file for year i
   writeOGR(cdfa_sections_unique,
@@ -139,6 +142,11 @@ for(i in yrs){
   rm(cdfa_sections)
   rm(cdfa_sections_unique)
   rm(cdfa_trs_summary)
+  
+  cdfa_trs_df = data.frame(uniq_trs = unique(cdfa_trs_df$trs))
+  cdfa_trs_df$year = i
+  
+  all_trs = rbind(all_trs,cdfa_trs_df)
   rm(cdfa_trs_df)
   
 }

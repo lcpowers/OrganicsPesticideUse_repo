@@ -108,7 +108,7 @@ apn_params = list(id_cols = 1:2,
                   col_names = c("orgID", "company","APN_index","original_apn"),
                   year = 2015)
 
-cdfa_2015_final = APN_edit_fun(cdfa_2015_raw, 
+cdfa_2015_final_df = APN_edit_fun(cdfa_2015_raw, 
                                id_cols = apn_params$id_cols, 
                                apn_cols = apn_params$apn_cols, 
                                col_names = apn_params$col_names, 
@@ -187,3 +187,31 @@ cdfa_2019_final_df = APN_edit_fun(cdfa_2019_raw,
                                   year = apn_params$year)
 rm(apn_params)
 ```
+
+
+## Counting total APNs
+```{r}
+years = 2013:2019
+
+all_apns = as.data.frame(matrix(ncol = 2))
+colnames(all_apns) = c("unique_apn","year")
+
+for(i in years){
+  
+  print(i)
+  tmp = eval(as.name(paste0("cdfa_",i,"_final_df")))
+  tmp = data.frame(unique_apn = unique(tmp$edited_APN))
+  tmp$year = i
+  all_apns = rbind(all_apns,tmp)
+  rm(tmp)
+  
+}
+```
+
+
+
+
+
+
+
+

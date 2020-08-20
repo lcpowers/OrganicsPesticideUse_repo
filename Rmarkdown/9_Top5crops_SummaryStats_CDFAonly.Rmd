@@ -10,18 +10,31 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 #### 1. Load packages and data
-```{r}
+```{r packages_and_data}
 library(tidyverse)
 library(haven)
-# setwd("~/Projects/Organics/Working/organics_repo/Rmarkdown/")
 options(scipen = 9999)
 
 ### Read in complete shapefile and convert to data.frame. Removes geometry column, which is not needed in this RMD.
-
-# input_df = read_csv("../R_output/CSV/compiled_organics1319.csv") 
 input_df = read_dta("../R_input/dta/organicAnalysisPUR copy.dta")
 colnames(input_df)
 
+soilQ = input_df %>%
+  group_by(pur_cdfa_org) %>%
+  summarize(avg_soil = mean(soil_quality, na.rm = T))
+
+soilQ_top4_summary = soilQ_top4 %>%
+  group_by(pur_cdfa_org,comm_edit) %>% 
+  summarise(average = mean(soil_quality,na.rm = T))
+
+no_soil = filter(input_df,is.na(soil_quality))
+no_soil_cropF = table(no_soil$commodity) %>% 
+  as.data.frame() %>% 
+  arrange(-Freq)
+
+# all_t.test <- t.test(soil_quality ~ pur_cdfa_org,data = input_df)
+# top_t.test <- t.test(soil_quality ~ pur_cdfa_org,data = input_top4)
+# top_t.test
 ```
 
 #### 2. Filter data.frame and keep only the 5 most common organic crops from 2013:2017
@@ -45,9 +58,6 @@ zero_fltr = filter(input_df, KgPestAI == 0)
 
 table(input_df$pur_cdfa_org)
 table(zero_fltr$pur_cdfa_org)
-
-20553/90553
-5112/8983
 
 
 zero_agro = as.data.frame(table(zero_fltr$agroclass))

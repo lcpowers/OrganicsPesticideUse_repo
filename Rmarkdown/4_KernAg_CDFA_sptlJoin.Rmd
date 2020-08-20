@@ -217,9 +217,9 @@ years = 2013:2019
 for(i in years){
   
   # Get file with APN and TRS organic designations
-  tmp = eval(as.name(paste0("apn_trs_orgs_",i)))
+  tmp = eval(as.name(paste0("cdfa_orgs_",i)))
   
-  # Create an organic commodity field. If contains "ORG" but not "SORGHUM" == 1. This would exclude organic sorghum, but haven't seen any of that. 
+  # Create an 'organic commodity' field. If contains "ORG" but not "SORGHUM" == 1. This would exclude organic sorghum, but haven't seen any of that. 
   tmp$comm_org <- ifelse((str_detect(tmp$comm,"ORG")&!str_detect(tmp$comm,"SORG")),1,0)
   
   # Create Ogranic permittee field
@@ -235,7 +235,7 @@ for(i in years){
           "trs_org",sum(tmp$trs_only),
           "all_org", sum(tmp$all_organic)))
   
-  # Incomment to write intermediate output file
+  # Uncomment to write intermediate output file
   # writeOGR(obj = as(tmp,"Spatial"),
   #          dsn = paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50"),
   #          layer = paste0("all_organics_",i),

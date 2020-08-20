@@ -104,7 +104,7 @@ for(i in years){ # For each year...
   for(j in buf_width){ # And each buffer width...
   
   # Read in the joined KernAg_CDFA data...
-  tmp <- read_sf(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer",j,"/all_organics_",i,".shp")) 
+  tmp <- read_sf(paste0("../R_output/spatial/final_organics_data/",i,"/all_organics_",i,".shp")) 
 
   
   # Assign a name
@@ -270,6 +270,7 @@ for(i in years){
       
       # Save in global environment
       assign(paste0("organics_df_final_",i), orgs_df_final)
+      rm(orgs_df_final)
       
         # Write the shapefile in to the output directory
         writeOGR(as(st_as_sf(orgs_df_final),"Spatial"),

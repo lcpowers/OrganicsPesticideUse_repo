@@ -26,19 +26,18 @@ library(haven)
 # Read in pesticide use data
 pest_data_raw = read_dta("../R_input/dta/KernFieldCrops1319.dta") %>% 
   as.data.frame()
+```
 
+#### Creating spatial dataset for map figures
+```{r packages}
 #Reading in Ashley result dta to create shapefile for spatial maps for paper
 mpdata = read_dta("../R_input/dta/organicAnalysisPUR.dta") %>% as.data.frame()
-
-#Crosswalk for yield gaps excel sheet
-yieldclass<-mpdata %>% dplyr::select(agroclass) %>% distinct()
-write_csv(yieldclass, "../R_output/CSV/yieldgapcrosswalk/agroclasses.csv")
   
-map_data<-mpdata %>% filter(year==2019) %>% dplyr::select(permitsite, year, hectares, soil_quality, comm_edit, comm_code2, KgPestAI, KgPestPrd)%>% dplyr::mutate(KgPestAIha=KgPestAI/hectares, KgPestPrdha=KgPestPrd/hectares) %>% dplyr::select(-KgPestAI, -KgPestPrd)
+map_data <- mpdata %>% filter(year==2019) %>% dplyr::select(permitsite, year, hectares, soil_quality, comm_edit, comm_code2, KgPestAI, KgPestPrd)%>% dplyr::mutate(KgPestAIha=KgPestAI/hectares, KgPestPrdha=KgPestPrd/hectares) %>% dplyr::select(-KgPestAI, -KgPestPrd)
 
 kernfields_2019<-read_sf("../R_input/spatial/kern_AG_shp/kern2019/kern2019.shp") %>% dplyr::select(PMT_SITE) %>% dplyr::rename(permitsite=PMT_SITE)
 
-top15crops<- map_data %>% dplyr::select(permitsite, comm_code2) %>% group_by(comm_code2) %>% summarize(count=n()) %>% 
+top15crops <- map_data %>% dplyr::select(permitsite, comm_code2) %>% group_by(comm_code2) %>% summarize(count=n()) %>% 
   arrange(-count) %>% dplyr::mutate(Order=1:nrow(.)) %>% ungroup() %>% 
   full_join(map_data, by="comm_code2") %>% dplyr::mutate(comm=tolower(ifelse(Order<=15, comm_edit, "Other")))%>% 
   dplyr::select(comm_edit, comm, comm_code2) %>% distinct() %>% 
@@ -50,9 +49,17 @@ mapdf<-full_join(map_data, kernfields_2019, by="permitsite") %>%
   full_join(top15crops, by=c("comm_edit", "comm_code2"))%>% st_as_sf()
 
 write_sf(mapdf, "../R_output/spatial/map_data/mapdf.shp", delete_layer = TRUE)
+```
 
+#### Crosswalk table for yield gaps table to agroclass table
+```{r}
+
+#Crosswalk for yield gaps excel sheet
+yieldclass<-mpdata %>% dplyr::select(agroclass) %>% distinct()
+write_csv(yieldclass, "../R_output/CSV/yieldgapcrosswalk/agroclasses.csv")
 
 ```
+
 
 #### 2. Read in finalized data (shapefile) for each year, and turn into dataframe to rbind in next chunk
 ```{r data}
