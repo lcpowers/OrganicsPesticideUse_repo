@@ -31,7 +31,6 @@ library(tidyverse)
 library(rgdal)
 library(stringi)
 library(sf)
-library(fuzzyjoin)
 
 # Avoid scientific notation
 options(scipen = 999) 
@@ -270,7 +269,6 @@ for(i in years){
       
       # Save in global environment
       assign(paste0("organics_df_final_",i), orgs_df_final)
-      rm(orgs_df_final)
       
         # Write the shapefile in to the output directory
         writeOGR(as(st_as_sf(orgs_df_final),"Spatial"),
