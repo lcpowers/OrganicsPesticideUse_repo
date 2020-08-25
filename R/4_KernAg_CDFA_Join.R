@@ -30,7 +30,8 @@ kernAg_CDFA_joinFun = function(year, buf_width, write_all_shp=F, write_cdfa_shp 
                   "FAMILY",
                   "CDFA"=cdfa,
                   ACRES,
-                  "SOILQ" = soil)
+                  "SOIL_withNAs" = soil,
+                  "SOIL_noNAs" = soil_noNA)
   
   # Separate the COMM column by '-' into COMM_x and COMM_y
   output = join %>%

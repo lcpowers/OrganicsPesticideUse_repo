@@ -24,7 +24,7 @@ Soil_to_KernAg_fun = function(year){
     dplyr::select(-c(COMM_EDIT,COMM_CODEOLD))
   
   ## Extract values from soil raster that correspond to each polygon in the ag shapefile
-  r.vals = raster::extract(soil_ras, # Storie Index Raster Values
+  r.vals.na = raster::extract(soil_ras, # Storie Index Raster Values
                            ag_slct, # Extract based on Kern Ag polygon outlines from the Kern Ag shapefile
                            fun = mean, # Find the mean value of raster cells that overlap with each polygon
                            small = TRUE, # Include mean values for small polygons
@@ -34,10 +34,26 @@ Soil_to_KernAg_fun = function(year){
                            df = TRUE) # Return results as a data.frame
   
   # Change '0' values to NA
-  r.vals$layer[r.vals$layer == 0] = NA
+  r.vals.na$layer[r.vals.na$layer == 0] = NA
   
   ## Add the mean values to the Kern Agriculture Shapefile
-  ag_slct$soil = r.vals$layer  
+  ag_slct$soil_NA = r.vals.na$layer  
+  
+  ## Extract values from soil raster that correspond to each polygon in the ag shapefile
+  r.vals.NOna = raster::extract(soil_ras_covered, # Storie Index Raster Values
+                           ag_slct, # Extract based on Kern Ag polygon outlines from the Kern Ag shapefile
+                           fun = mean, # Find the mean value of raster cells that overlap with each polygon
+                           small = TRUE, # Include mean values for small polygons
+                           weights = TRUE, # Add weights for weighted means
+                           normalizeWeights = TRUE,
+                           na.rm = TRUE, # Ignore NAs when calculating mean values -- BUT then need to change 0s back to NAs
+                           df = TRUE) # Return results as a data.frame
+  
+  # Change '0' values to NA
+  r.vals.NOna$layer[r.vals.NOna$layer == 0] = NA
+  
+  ## Add the mean values to the Kern Agriculture Shapefile
+  ag_slct$soil_noNA = r.vals.NOna$layer  
   
   ## Convert back into Shapefile
   ag_shp_withSoil = as(ag_slct, "Spatial")
