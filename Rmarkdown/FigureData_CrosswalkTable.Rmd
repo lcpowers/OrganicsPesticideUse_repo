@@ -9,12 +9,22 @@ knitr::opts_chunk$set(echo = TRUE)
 
 #### Creating spatial dataset for map figures
 ```{r packages}
+library(tidyverse)
+library(rgdal)
+library(sf)
+library(haven)
+
 #Reading in Ashley result dta to create shapefile for spatial maps for paper
 mpdata = read_dta("../R_input/dta/organicAnalysisPUR.dta") %>% as.data.frame()
   
 map_data <- mpdata %>% filter(year==2019) %>% dplyr::select(permitsite, year, hectares, soil_quality, comm_edit, comm_code2, KgPestAI, KgPestPrd)%>% dplyr::mutate(KgPestAIha=KgPestAI/hectares, KgPestPrdha=KgPestPrd/hectares) %>% dplyr::select(-KgPestAI, -KgPestPrd)
 
-kernfields_2019<-read_sf("../R_input/spatial/kern_AG_shp/kern2019/kern2019.shp") %>% dplyr::select(PMT_SITE) %>% dplyr::rename(permitsite=PMT_SITE)
+kernfields_2019<-read_sf("../R_input/spatial/kern_AG_shp/kern2019/kern2019.shp") %>% dplyr::select(PMT_SITE, P_STATUS, S_STATUS) %>% dplyr::rename(permitsite=PMT_SITE)
+
+kernfields_2019_spatial<-read_sf("../R_input/spatial/kern_AG_shp/kern2019/kern2019.shp") %>%dplyr::select(PERMIT) %>% distinct() %>% 
+  dplyr::mutate(SpatialID=1:nrow(.)) 
+
+kf_2019<-st_join(kernfields_2019_spatial, kernfields_2019)
 
 top15crops <- map_data %>% dplyr::select(permitsite, comm_code2) %>% group_by(comm_code2) %>% summarize(count=n()) %>% 
   arrange(-count) %>% dplyr::mutate(Order=1:nrow(.)) %>% ungroup() %>% 
