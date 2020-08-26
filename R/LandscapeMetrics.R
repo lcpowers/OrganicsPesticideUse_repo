@@ -1,5 +1,5 @@
 #Landscape Metrics for Organic vs Conventional Farms
-
+#Currently not using any of these metrics, but available if necessary
 #Read in packages
 library(tidyverse)
 library(sf)
