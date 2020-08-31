@@ -34,7 +34,7 @@ pest_data_raw = read_dta("../R_input/dta/KernFieldCrops1319.dta") %>%
 
 years = 2013:2019
 
-## Read in shapefiles and make into a simple data.frame without geometry
+## Read in shapefiles and make into a simple dataframe without geometry
 for(i in years){
   
   tmp = read_sf(paste0("../R_output/spatial/final_organics_data/",i,"/all_organics_pest_",i,".shp")) 
@@ -87,7 +87,7 @@ missing_agrcls = filter(organics_df_2019,is.na(agroclass))
 data.frame(table(organics_df_2019$comm_dt[is.na(organics_df_2019$agroclass)])) %>% 
   arrange(-Freq)
 
-# 
+# Select columns and rename where necessary
 organics_df_2019 = organics_df_2019 %>% 
   dplyr::select(permtst,
                 permit,
@@ -305,21 +305,4 @@ ggplot(mean_soil_NA, aes(x = year, y = mean_soilQ))+
   theme(legend.title = element_blank())
 ```
 
-
-#### 6. Check out pesticide use data
-```{r pesticide}
-#Pesticide data removed from dta
-
-# explore_pst_use = all_years_df %>% 
-#   group_by(cdfa_org,year) %>% 
-#   summarise(avg_kg_pest_ai = round(mean(KgPestAI),2), # should adjust this for number of fields
-#             avg_kg_ai_perHec = round(mean(KgAIperHE),2))
-# 
-# ggplot(explore_pst_use,aes(x = as.factor(year), y = avg_kg_pest_ai, fill = as.factor(year)))+
-#   geom_col()+
-#   geom_label(aes(label = avg_kg_ai_perHec))+
-#   facet_wrap(~cdfa_org)+
-#   theme_classic()
-
-```
 

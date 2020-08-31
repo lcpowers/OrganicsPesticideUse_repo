@@ -20,7 +20,6 @@ knitr::opts_chunk$set(echo = TRUE)
 - Shapefile that includes information from Kern Ag, CDFA, Storie Index (soil), and pesticide use data in the attribute table
       - ../R_output/spatial/final_organics_data/[YEAR]/all_organics_pest_[YEAR].shp
 
-
 ---
 
 

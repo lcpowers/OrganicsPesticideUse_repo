@@ -96,18 +96,24 @@ colnames(cdfa_kernag_2013)
 
 #### 3. Perform spatial join between CDFA PLSS sections and Kern County Agriculture Parcels -- Extract Ag parcels that overlap with CDFA sections. 
 ```{r trs_ag_join, warning=FALSE}
-
+# Years to evaluate
 years = 2013:2019
 
+# Initiate dataframe we will use to tally the number of organic observations using each CDFA org designation
 cdfa_orgs_table = matrix(ncol = 4, nrow = length(years))
+
+# Name columns
 colnames(cdfa_orgs_table) = c("year","apn","trs","total")
+
+# Fill in years column
 cdfa_orgs_table[,1] <- c(years)
 
+# Create output folder if not already present
 dir.create("../R_output/spatial/final_organics_data/")
 
 for(i in years){
   
-  # Read in Kern County Ag-CDFA shapefile produced on function above. 
+  # Read in Kern County Ag-CDFA shapefile produced on function above for year i 
    tmp <- readOGR(paste0("../R_output/spatial/CDFA_KernAg_join/",i,"/buffer50/KernAg_CDFA_all_",i,"_B50.shp")) %>% 
      cleangeo::clgeo_Clean(.) %>% 
      st_as_sf()
@@ -116,7 +122,7 @@ for(i in years){
   assign(paste0("cdfa_kern_apn_",i),tmp)
   rm(tmp)
   
-  ## Read in Kern County Ag data with soil quality in attribute table, produced in RMD 3
+  ## Read in Kern County Ag data with soil quality included attribute table, produced in RMD 3
   tmp <- read_sf(paste0("../R_output/spatial/KernAg_withSoil/",i,"/KernAg_withSoil_",i,".shp")) %>%
     dplyr::select(PERMIT,PMT_SITE,S_STATUS,P_STATUS,COMM,PERMITTEE,AG_TRS) %>% # Select columns 
     as(.,"Spatial") %>% # Convert to shapefile
@@ -139,12 +145,12 @@ for(i in years){
   assign(paste0("cdfa_sections_",i),tmp)
   rm(tmp)
   
-  # Join Kern County Agriculture data to CDFA sections
+  # Join Kern County Agricultural data to CDFA sections
   cdfasection_ag_join <- st_join(eval(as.name(paste0("kern_",i))), # Kern ag data for year i
                       eval(as.name(paste0("cdfa_sections_",i))), # CDFA PLSS sections for year i
                       largest=T) # Join Polygons with the largest overlap
   
-  # Create binary column where 1 is assigned to rows where the work "ORGANIC" is in the permittee name, and otherwise 0
+  # Create binary column where 1 is assigned to rows with the word "ORGANIC" in the permittee name, and otherwise 0
   cdfasection_ag_join$trs_orgPermittee_match <- ifelse((str_detect(cdfasection_ag_join$PERMITTEE,"ORGANIC") &
                                                           cdfasection_ag_join$trs_match == 1),1,0)
     
@@ -181,16 +187,16 @@ for(i in years){
          "trs_only" = trs_match,
          "trs_orgPermittee" = trs_orgPermittee_match)
   
-    # Replace NAs with 0s in the trs_match column to make binary column
+    # Replace NAs with 0s in the trs_only and trs_orgPermittee column to make binary 
     apn_trs_organics_final$trs_only[is.na(apn_trs_organics_final$trs_only)] = 0
     apn_trs_organics_final$trs_orgPermittee[is.na(apn_trs_organics_final$trs_orgPermittee)] = 0
   
-    # Create a binary organic column based on the apn_match and trs_match columns. If either of those indicates that the parcel is organic then the value in the binary organic column == 1.
+    # Create a CDFA binary organic column based on the apn_match and trs_match columns. If either of those indicates that the parcel is organic then the value in the CDFA_org column == 1.
     apn_trs_organics_final$cdfa_organic <- ifelse(apn_trs_organics_final$apn==1|apn_trs_organics_final$trs_only==1, # If APN or TRS organic
                                               1, # put a 1 in the cdfa_organic column
                                               0) # otherwise put a 0
     
-    # Assign unique name
+    # Assign unique name to dataframe
     assign(paste0("cdfa_orgs_",i),apn_trs_organics_final)
     
       # # Uncomment to write intermediate Output File
@@ -206,6 +212,7 @@ for(i in years){
                         trs_only = sum(apn_trs_organics_final$trs),
                         total = sum(apn_trs_organics_final$cdfa_organic))
   
+     # Merge about with the compiled years df
       cdfa_orgs_table = merge(cdfa_orgs_table,tmp_sum) # Merge previous years with year i
       rm(tmp_sum)                      
   }
@@ -252,6 +259,7 @@ for(i in years){
            driver = "ESRI Shapefile",
            overwrite_layer = T)
   
+  # Assign unique name for year i and remove tmp file
    assign(paste0("all_orgs_",i),tmp)
    rm(tmp)
 

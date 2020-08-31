@@ -1,0 +1,111 @@
+---
+title: "Inverse distance weighting to fill in NA soil values"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Packages
+```{r packages}
+library(sf)
+library(tidyverse)
+library(sp)
+library(gstat)
+library(raster)
+library(rgdal)
+library(rspatial)
+```
+
+
+####
+## 1) Read in and prepare input soil data
+```{r soil_data}
+# Read in original soil shapefile
+soil_sf = read_sf("../R_input/spatial/KernSoilDataBasin/KernSoilData_QGISreproj.shp")
+
+# Read in soil raster, rasterized version of original soil data
+soil_ras = raster("../R_output/spatial/SoilRaster/soil_ras.tif")
+
+# Crop to soil_sf (these were very slightly different on the eatern boundary)
+soil_ras = raster::crop(soil_ras, extent(soil_sf))
+
+# Plot to check
+# plot(soil_ras)
+
+# Generate dataframe of points from the raster, which will be used as observed points in IDW
+soil_points = as.data.frame(rasterToPoints(x = soil_ras))
+
+# Assign corrdinates to soil points
+coordinates(soil_points) <- ~ x + y
+
+# Define CRS of soil points
+crs(soil_points) <- crs(soil_sf)
+```
+
+## 2) Create IDW grid template
+```{r create_IDW_grid}
+# Length (in cells) of x- and y-axes of template grid. Creating grid that is ~270 m resolution. Higher resolution --> extremely long processing time with minimal gains in accuracy
+x_len = (xmax(soil_points) - xmin(soil_points))/269.5
+y_len = (ymax(soil_points) - ymin(soil_points))/269.5
+
+# To get 270m raster
+xnew = seq(xmin(soil_points),xmax(soil_points),length = x_len)
+ynew = seq(ymin(soil_points),ymax(soil_points),length = y_len)
+
+# Create grid
+Grid = expand.grid(xnew,ynew)
+colnames(Grid) <- c("xnew","ynew")
+coordinates(Grid) <- ~ xnew + ynew
+gridded(Grid) <- T
+fullgrid(Grid) <- T
+
+# Check grid 
+class(Grid)
+res(raster(Grid))
+# plot(Grid)
+
+# Define projection
+proj4string(Grid) <- proj4string(soil_points)
+```
+
+## 3) Perform IDW
+```{r perform_IDW}
+### IDW
+timestamp()
+P.idw = gstat::idw(formula = soil_ras ~ 1, locations = soil_points, newdata = Grid, idp = 2, nmax = 50)
+r = raster(P.idw)
+
+r_mask <- mask(r,soil_sf)
+writeRaster(r_mask,"../R_output/spatial/SoilRaster/soil_ras_IDW.tif", overwrite = T)
+
+
+timestamp()
+```
+
+## 4) Cross-validate results using Leave One Out Cross validation
+```{r LOOcrossvalidation}
+### Cross validation 
+cv_length = 500
+
+### Generate random sample of 500 points
+random_sample = sample(x = 1:length(soil_points),size = cv_length, replace = F)
+
+### Initialize dataframe to store CV results
+IDW.out <- vector(length = cv_length)
+
+
+for (i in 1:length(random_sample)) {
+  
+  IDW.out[i] <- idw(soil_ras ~ 1, soil_points[-(random_sample[i]),], soil_points[random_sample[i],], idp=2)$var1.pred
+  
+  }
+
+timestamp()
+
+```
+
+
+

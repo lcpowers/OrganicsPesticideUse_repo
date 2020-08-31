@@ -78,8 +78,9 @@ rm(apn_params)
 # multiple columns. Those that have fewer than the maximum number of ? receive NAs in 
 # those columns. The warning is not problematic and does not effect those APN values. 
 ```
-All subsequent years follow the same order of operations as those explained in the 2013 code chunk above. 
 
+
+All subsequent years follow the same order of operations as those explained in the 2013 code chunk above. 
 
 #### 2014
 ```{r yr2014, message=FALSE}
@@ -189,13 +190,18 @@ rm(apn_params)
 ```
 
 
-## Counting total APNs
-```{r}
+#### Counting total APNs 
+```{r counting_APNS}
+# Years to count from
 years = 2013:2019
 
+# Initiate data.frame to store results in for loop
 all_apns = as.data.frame(matrix(ncol = 2))
+
+# Name data.frame columns
 colnames(all_apns) = c("unique_apn","year")
 
+# Being for loop that combines unique APN entries for all years. The length of the final table == the total number of unique APNs. A unique APN in this context is actually an APN-year combination, as the same APN value represents different data for different years. 
 for(i in years){
   
   print(i)

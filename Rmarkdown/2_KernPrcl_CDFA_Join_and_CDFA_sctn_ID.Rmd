@@ -80,20 +80,23 @@ kern_sections_slct$trs <- str_sub(kern_sections_slct$MTRS,2,9)
 ##### B) Read in CDFA PLSS csv, join to PLSS shapefile and write output shapefile
 ```{r CDFA_trs}
 
+# Years to evaluate
 yrs = 2013:2019
 
+# Initiate empty dataframe where results will be stored
 all_trs = data.frame(matrix(ncol = 2))
+# Name output df columns
 colnames(all_trs) = c("uniq_trs","year")
 
 for(i in yrs){
   
-  # Assign output file name
+  # Assign output file name variable for specific year
   outputfile = paste0("../R_output/spatial/CDFA_PLSS_sections/",i)
   
-  # Create output file
+  # Create output folder
   dir.create(outputfile)
   
-  # Read in CDFA data with the TRS codes pulled from the APN column
+  # Read in CDFA data with the TRS codes pulled from the APN and address columns
   cdfa_trs_df = read.csv(paste0("../R_input/CSV/CDFA/excel_edited_PLSS/cdfa_trs_",i,".csv")) %>% 
     dplyr::select("Company","t","r","s") 
   
@@ -143,9 +146,11 @@ for(i in yrs){
   rm(cdfa_sections_unique)
   rm(cdfa_trs_summary)
   
+  # Data.frame of unique TRS codes for year i
   cdfa_trs_df = data.frame(uniq_trs = unique(cdfa_trs_df$trs))
   cdfa_trs_df$year = i
   
+  #Compile dataframe of unique TRS codes for each year. 
   all_trs = rbind(all_trs,cdfa_trs_df)
   rm(cdfa_trs_df)
   
