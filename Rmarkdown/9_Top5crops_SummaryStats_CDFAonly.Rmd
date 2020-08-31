@@ -16,32 +16,16 @@ library(haven)
 options(scipen = 9999)
 
 ### Read in complete shapefile and convert to data.frame. Removes geometry column, which is not needed in this RMD.
-input_df = read_dta("../R_input/dta/organicAnalysisPUR copy.dta")
+input_df = read_stata("../R_input/dta/organicAnalysisPUR copy.dta")
 colnames(input_df)
 
-soilQ = input_df %>%
-  group_by(pur_cdfa_org) %>%
-  summarize(avg_soil = mean(soil_quality, na.rm = T))
-
-soilQ_top4_summary = soilQ_top4 %>%
-  group_by(pur_cdfa_org,comm_edit) %>% 
-  summarise(average = mean(soil_quality,na.rm = T))
-
-no_soil = filter(input_df,is.na(soil_quality))
-no_soil_cropF = table(no_soil$commodity) %>% 
-  as.data.frame() %>% 
-  arrange(-Freq)
-
-# all_t.test <- t.test(soil_quality ~ pur_cdfa_org,data = input_df)
-# top_t.test <- t.test(soil_quality ~ pur_cdfa_org,data = input_top4)
-# top_t.test
 ```
 
 #### 2. Filter data.frame and keep only the 5 most common organic crops from 2013:2017
 ```{r top5_crops}
 # CDFA Organic Column
 org_colname = "pur_cdfa_org"
-comm_colname = "agroclass"
+
 
 input_df_fltr = input_df %>% 
      group_by(eval(as.name(comm_colname))) %>% 
@@ -51,8 +35,10 @@ input_df_fltr = input_df %>%
   filter(organic_fields > 0 & conv_fields > 0) %>% 
   arrange(-organic_fields)
 
-common_crops = as.character(input_df_fltr[1])
-top5_crops = as.character(head(input_df_fltr[1],5))
+
+
+common_crops = input_df_fltr$`eval(as.name(comm_colname))`
+top5_crops = (head(input_df_fltr$`eval(as.name(comm_colname))`,5))
 
 zero_fltr = filter(input_df, KgPestAI == 0)
 

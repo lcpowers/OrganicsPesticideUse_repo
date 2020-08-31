@@ -132,11 +132,11 @@ for(i in yrs){
   cdfalayer = paste0("cdfa_sections_",i)
   
   # Write output file for year i
-  writeOGR(cdfa_sections_unique,
-           dsn = outputfile,
-           layer = cdfalayer,
-           driver = "ESRI Shapefile",
-           overwrite = TRUE)
+  # writeOGR(cdfa_sections_unique,
+  #          dsn = outputfile,
+  #          layer = cdfalayer,
+  #          driver = "ESRI Shapefile",
+  #          overwrite = TRUE)
   
   # Remove CDFA data frames to avoid crossover between years
   rm(cdfa_sections)
