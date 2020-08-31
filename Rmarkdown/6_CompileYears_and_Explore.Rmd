@@ -22,6 +22,7 @@ library(tidyverse)
 library(rgdal)
 library(sf)
 library(haven)
+library(ggplot2)
 
 # Read in pesticide use data
 pest_data_raw = read_dta("../R_input/dta/KernFieldCrops1319.dta") %>% 
@@ -99,7 +100,9 @@ organics_df_2019 = organics_df_2019 %>%
                 "genus" = genus.y, 
                 "family" = family.y, 
                 comm_dt,
-                acres,soil_q,
+                acres,
+                sol_wNA,
+                sol_nNA,
                 apn,trs_nly,
                 trs_rgP,
                 cdf_rgn,
@@ -152,7 +155,7 @@ table(all_years_df$year)
 
 ## Rename columns with full names
 colnames(all_years_df) = c("permitsite","ag_permit","s_status","p_status","permittee","comm_original","comm_code","agroclass","genus","family",
-                           "comm_edit","acres","soil_quality","apn_org","trsonly_org","trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org",
+                           "comm_edit","acres","soil_NA","soil_noNA","apn_org","trsonly_org","trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org",
                            "all_org","year","pur_permit","pur_site","n_crops","hectares")
 
 # Write output dta and csv files
@@ -192,8 +195,8 @@ table(all_years_shp$year)
 
 # Rename columns
 colnames(all_years_shp) = c("permitsite","ag_permit","s_status","p_status","permittee","comm_original","comm_code","agroclass","genus","family",
-                           "comm_edit","acres","soil_quality","apn_org","trsonly_org","trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org",
-                           "all_org","year","pur_permit","pur_site","n_crops","hectares", "geometry")
+                           "comm_edit","acres","soil_NA","soil_noNA","apn_org","trsonly_org","trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org",
+                           "all_org","year","pur_permit","pur_site","n_crops","hectares","geometry")
 
 # Write output shapefile
 writeOGR(as(all_years_shp,"Spatial"),
@@ -256,9 +259,13 @@ ggplot(mean_hectares, aes(x = year, y = mean_hectares))+
 Soil Quality
 ```{r soilQuality}
 
-mean_soilQ = all_years_df %>% 
+mean_soil_noNA = all_years_df %>% 
   group_by(year,cdfa_org) %>% 
-  summarise(mean_soilQ = round(mean(soil_quality, na.rm=T),2))
+  summarise(mean_soilQ = round(mean(soil_noNA, na.rm=T),2))
+
+mean_soil_NA = all_years_df %>% 
+  group_by(year,cdfa_org) %>% 
+  summarise(mean_soilQ = round(mean(soil_NA, na.rm=T),2))
 
 # ggplot(mean_soilQ,aes(x = year,y = mean_soilQ,fill=as.factor(cdfa_org)))+
 #   # geom_col(position = "dodge")+
@@ -275,7 +282,18 @@ mean_soilQ = all_years_df %>%
 #   theme_classic()+
 #   facet_wrap(~year)
 
-ggplot(mean_soilQ, aes(x = year, y = mean_soilQ))+
+ggplot(mean_soil_noNA, aes(x = year, y = mean_soilQ))+
+  geom_line(aes(colour = as.factor(cdfa_org)), size = 1)+
+  geom_point(aes(colour = as.factor(cdfa_org)))+
+  theme_classic()+
+  scale_colour_manual(values = c("darkgoldenrod2", "#2e4057"), labels = c("Conventional","Organic"))+
+  scale_x_continuous(breaks = c(2013:2019))+
+  xlab("Year")+
+  ylim(1,3)+
+  ylab("Average Storie Index Soil Quality Rating \n [1 = highest]")+
+  theme(legend.title = element_blank())
+
+ggplot(mean_soil_NA, aes(x = year, y = mean_soilQ))+
   geom_line(aes(colour = as.factor(cdfa_org)), size = 1)+
   geom_point(aes(colour = as.factor(cdfa_org)))+
   theme_classic()+
