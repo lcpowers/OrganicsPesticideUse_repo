@@ -1,0 +1,300 @@
+---
+title: "7. Final Summary Table"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+**The purpose of this Rmarkdown file is to create summary tables from the final dataset from RMD 6.**  
+
+**Input:**
+../R_input/dta/organicAnalysisPUR copy.dta
+
+
+**Output:**
+- ../R_output/CSV/organicVSconventional_summarytable.csv
+- ../R_output/CSV/organicVSconventional_SIsummarytable.csv
+
+---
+
+```{r packages}
+
+library(tidyverse)
+library(haven)
+library(pastecs)
+options(scipen = 9999)
+
+rm(list=ls())
+```
+
+
+```{r data}
+### Read in dta file from Ashley -- output of RMD 6 with pesticide use info and IHS transformed data used in analyses added on
+final_data = read_dta("../R_input/dta/organicAnalysisPUR copy.dta") 
+
+# colnames(final_data)
+table(final_data$year)
+
+# Remove rows of data where plant family not assigned
+# final_data = filter(final_data,family!="")
+
+### Get rid of '-' at end of some commodities in 'comm_edit' column
+# Convert comm_edit column from factor to character
+final_data$comm_edit <- as.character(final_data$comm_edit)
+
+# Separate edited comm column (comm_dt) by dash
+final_data <- final_data %>%
+    separate(col = "comm_edit",
+             into = c("COMM_x","COMM_y"),
+             sep = "-",
+             remove = FALSE)
+
+# Get rid of '-' where it exists at the end of commodity strings
+final_data$comm_edit <- ifelse((final_data$COMM_y==""| # If there is a 0 , "", or NA in the comm_y column from above
+                                     final_data$COMM_y=="O"|
+                                     is.na(final_data$COMM_y)),
+                                  final_data$COMM_x, # Then comm equals the value in comm_x
+                                  final_data$comm_edit) # Otherwise it equals the comm_dt column as is
+
+
+final_data <- dplyr::select(final_data, -c(COMM_x,COMM_y))
+### End fix comm column
+```
+
+# Building summary tables
+## Main Text Summary Table for AI and PRD
+```{r main_text_table}
+
+# List of top 5 crops
+top5 = c("CARROT","GRAPE","ORANGE","ONION DRY ETC","POTATO")
+
+# Build a summary table
+all_crops = final_data %>% 
+  mutate(kgAI_ha = KgPestAI/hectares, # kgAI per hectare
+         kgPrd_ha = KgPestPrd/hectares) %>% # kg pest product per hectare
+  group_by(pur_cdfa_org) %>% # Group by org/conventional
+  summarise(total_fields = n(), # Count total fields (by groups)
+            avg_fieldsz = mean(hectares), # Mean field size in hectares
+            se_fieldsz = sd(hectares)/sqrt(length(hectares)), # SE for field size
+            avg_soilq = mean(soil_quality, na.rm = T), # avg soil quality
+            se_soilq = sd(soil_quality, na.rm = T)/sqrt(length(soil_quality[!is.na(soil_quality)])), # SE of mean soil quality
+            avg_aihe = mean(kgAI_ha, na.rm=T), # Avg kg/hectare
+            se_ai = sd(kgAI_ha, na.rm=T)/sqrt(length(kgAI_ha)), # SE kg per hectare
+            avg_prdhe = mean(kgPrd_ha, na.rm=T), # Avg prd per hecatre
+            se_prd = sd(kgPrd_ha, na.rm=T)/sqrt(length(kgPrd_ha))) %>% # SE prd per hectare 
+  as.data.frame(.)
+
+all_crops$category = "all_fields"
+
+top5_summary = final_data %>% 
+  mutate(kgAI_ha = KgPestAI/hectares,
+       kgPrd_ha = KgPestPrd/hectares) %>% 
+  filter(comm_edit %in% top5) %>% # Filter for top 5 commodities
+  group_by(comm_edit,pur_cdfa_org) %>% 
+  summarise(total_fields = n(),
+            avg_fieldsz = mean(hectares), 
+            se_fieldsz = sd(hectares)/sqrt(length(hectares)), 
+            avg_soilq = mean(soil_quality,na.rm = T), 
+            se_soilq = sd(soil_quality, na.rm = T)/sqrt(length(soil_quality[!is.na(soil_quality)])), 
+            avg_aihe = mean(kgAI_ha,na.rm=T),
+            se_ai = sd(kgAI_ha,na.rm=T)/sqrt(length(kgAI_ha)),
+            avg_prdhe = mean(kgPrd_ha,na.rm=T),
+            se_prd = sd(kgPrd_ha,na.rm=T)/sqrt(length(kgPrd_ha))) %>% 
+  as.data.frame(.)
+
+colnames(top5_summary)[1] <- "category" # Rename category column
+top5_summary <- top5_summary[,c(2:11,1)] # Reorder dataframe to do row bind below
+
+summary_table_final = rbind(all_crops,top5_summary)
+write_csv(summary_table_final, "../R_output/CSV/organicVSconventional_summarytable.csv" )
+
+```
+
+## SI table for AI PRD
+```{r SI_table}
+
+top5 = c("CARROT","GRAPE","ORANGE","ONION DRY ETC","POTATO")
+
+# Building a summary table
+all_crops = final_data %>% 
+  mutate(kgAI_ha = KgPestAI/hectares,
+         kgPrd_ha = KgPestPrd/hectares) %>% 
+  group_by(pur_cdfa_org) %>% 
+  summarise(total_fields = n(),
+            avg_fieldsz = mean(hectares), # Mean field size in hectares
+            se_fieldsz = sd(hectares)/sqrt(length(hectares)), # mean of average in he
+            avg_soilq = mean(soil_quality,na.rm = T), # avg soil quality
+            se_soilq = sd(soil_quality, na.rm = T)/sqrt(length(soil_quality[!is.na(soil_quality)])), # SE of mean soil quality
+            avg_aihe = mean(kgAI_ha,na.rm=T),
+            se_ai = sd(kgAI_ha,na.rm=T)/sqrt(length(kgAI_ha)),
+            avg_prdhe = mean(kgPrd_ha,na.rm=T),
+            se_prd = sd(kgPrd_ha,na.rm=T)/sqrt(length(kgPrd_ha))) %>% 
+  as.data.frame(.)
+all_crops$category = "all_fields"
+
+top5_summary = final_data %>% 
+  mutate(kgAI_ha = KgPestAI/hectares,
+       kgPrd_ha = KgPestPrd/hectares) %>% 
+  filter(comm_edit %in% top5) %>% 
+  group_by(comm_edit,pur_cdfa_org) %>% 
+  summarise(total_fields = n(),
+            avg_fieldsz = mean(hectares), # Mean field size in hectares
+            se_fieldsz = sd(hectares)/sqrt(length(hectares)), # mean of average in he
+            avg_soilq = mean(soil_quality,na.rm = T), # avg soil quality
+            se_soilq = sd(soil_quality, na.rm = T)/sqrt(length(soil_quality[!is.na(soil_quality)])), # SE of mean soil quality
+            avg_aihe = mean(kgAI_ha,na.rm=T),
+            se_ai = sd(kgAI_ha,na.rm=T)/sqrt(length(kgAI_ha)),
+            avg_prdhe = mean(kgPrd_ha,na.rm=T),
+            se_prd = sd(kgPrd_ha,na.rm=T)/sqrt(length(kgPrd_ha))) %>% 
+  as.data.frame(.)
+
+colnames(top5_summary)[1] <- "category"
+top5_summary <- top5_summary[,c(2:11,1)]
+
+all_crops_that_spray = final_data %>%
+  mutate(kgAI_ha = KgPestAI/hectares,
+       kgPrd_ha = KgPestPrd/hectares) %>%
+  filter(KgPestPrd>0) %>%
+  group_by(pur_cdfa_org) %>%
+  summarise(total_fields = n(),
+            avg_fieldsz = mean(hectares), # Mean field size in hectares
+            se_fieldsz = sd(hectares)/sqrt(length(hectares)), # mean of average in he
+            avg_soilq = mean(soil_quality,na.rm = T), # avg soil quality
+            se_soilq = sd(soil_quality, na.rm = T)/sqrt(length(soil_quality[!is.na(soil_quality)])), # SE of mean soil quality
+            avg_aihe = mean(kgAI_ha,na.rm=T),
+            se_ai = sd(kgAI_ha,na.rm=T)/sqrt(length(kgAI_ha)),
+            avg_prdhe = mean(kgPrd_ha,na.rm=T),
+            se_prd = sd(kgPrd_ha,na.rm=T)/sqrt(length(kgPrd_ha))) %>% 
+  as.data.frame(.)
+
+all_crops_that_spray$category = "all_fields_spray"
+top5_that_spray = final_data %>%
+  mutate(kgAI_ha = KgPestAI/hectares,
+       kgPrd_ha = KgPestPrd/hectares) %>%
+  filter(KgPestPrd>0) %>%
+  filter(comm_edit %in% top5) %>%
+  group_by(comm_edit,pur_cdfa_org) %>%
+  summarise(total_fields = n(),
+            avg_fieldsz = mean(hectares), # Mean field size in hectares
+            se_fieldsz = sd(hectares)/sqrt(length(hectares)), # mean of average in he
+            avg_soilq = mean(soil_quality,na.rm = T), # avg soil quality
+            se_soilq = sd(soil_quality, na.rm = T)/sqrt(length(soil_quality[!is.na(soil_quality)])), # SE of mean soil quality
+            avg_aihe = mean(kgAI_ha,na.rm=T),
+            se_ai = sd(kgAI_ha,na.rm=T)/sqrt(length(kgAI_ha)),
+            avg_prdhe = mean(kgPrd_ha,na.rm=T),
+            se_prd = sd(kgPrd_ha,na.rm=T)/sqrt(length(kgPrd_ha))) %>% 
+  as.data.frame(.)
+
+colnames(top5_that_spray)[1] <- "category"
+top5_that_spray <- top5_that_spray[,c(2:11,1)]
+top5_that_spray$category <- paste0(top5_that_spray$category,"_spray")
+
+summary_table_final = rbind(all_crops,all_crops_that_spray, top5_summary, top5_that_spray)
+
+write_csv(summary_table_final, "../R_output/CSV/organicVSconventional_SIsummarytable.csv" )
+
+```
+
+# Farm sizes
+```{r farmsizes}
+
+# Mean farm size across all years
+farms = final_data %>% 
+  group_by(year,permit) %>% 
+  summarise(frmsize = sum(hectares),
+            .groups='keep') %>% 
+  group_by(permit) %>% 
+  summarise(FS )
+
+mean(farms$frmsize)
+
+df = final_data %>% # Get all data
+    filter(!is.na(soil_quality)) %>% 
+    filter(family != "") %>% 
+    group_by(permit,pur_cdfa_org,year) %>% # group by permit, org/conventional, year
+    summarise(frmsize = sum(hectares),.groups='keep') # Find total farm size -- org and conventional portions separate here but combined later
+  
+# Exclude farms that have at least one organic field (purely org or conventional + org)
+conv_only = df %>%
+  group_by(permit,year) %>% 
+  filter(!(any(pur_cdfa_org==1))) %>% 
+  summarise(frmsize = sum(frmsize),.groups='keep')
+  
+# atleast_1org = df %>% # Get all data
+#   group_by(permit,year) %>% # group by permit
+#   filter(any(pur_cdfa_org==1)) %>% # Get permits that have at least one org
+#   filter(!(all(pur_cdfa_org==1))) %>% # But remove purely organic permits (this removes crystal orgs)
+#   summarize(frmsize = sum(frmsize),.groups='keep') # Find total farmsize (org + conventional) for each permit each year
+
+atleast_1org = df %>% # Get all data
+  group_by(permit,year) %>% # group by permit
+  filter(any(pur_cdfa_org==1)) %>% # Get permits that have at least one org
+  filter(!(all(pur_cdfa_org==1))) %>% # But remove purely organic permits (this removes crystal orgs)
+  summarize(frmsize = sum(frmsize),.groups='keep') # Find total farmsize (org + conventional) for each permit each year
+
+mean(conv_only$frmsize)
+mean(atleast_1org$frmsize)
+
+```
+
+# Farm size -- Ashley's workflow
+```{r message=FALSE, warning=FALSE}
+
+# Collapse data to permit year so one obs per farm-year with total HA
+farmsizes = final_data %>% # Get all data
+    # filter(!is.na(soil_quality)) %>% 
+    # filter(family != "") %>% 
+    arrange(permit,year) %>% 
+    group_by(permit,year) %>% # Collapse to permit-year
+    summarise(avgOrg = avgOrg[1], ## First avgOrg obs for permit-year. Get same results with mean
+              org = mean(pur_cdfa_org), ## First avgOrg obs for permit-year
+              farmsize=mean(farmSz), ## Mean farm size
+              .groups='keep') %>% 
+    ungroup() %>% # ungroup
+    group_by(permit) %>% # Regroup to collapse on permit alone
+    summarise(frmsize = mean(farmsize),
+              org = mean(org)) # mean of farm size at farm-level across all years
+
+
+summary(farmsizes$frmsize[farmsizes$org > 0])
+summary(farmsizes$frmsize[farmsizes$org == 0])
+
+#######
+
+####### Filter in another way #######
+
+conventional_only_permits = final_data %>%
+  filter(avgOrg == 0)
+
+conventional_only_permits <- unique(conventional_only_permits$permit)
+conv_farmsizes <- filter(farmsizes, permit %in% conventional_only_permits)
+cat("\n")
+noquote("All conventional summary")
+print(summary(conv_farmsizes$frmsize))
+cat("\n")
+noquote("All conventional SD"); print(sd(conv_farmsizes$frmsize))
+cat("\n")
+cat("\n")
+noquote("---")
+
+cat("\n")
+cat("\n")
+
+atleastoneorg_permits <- final_data %>%
+  filter(avgOrg != 0)
+
+atleastoneorg_permits <- unique(atleastoneorg_permits$permit)
+al1org_farmsizes <- filter(farmsizes, permit %in% atleastoneorg_permits)
+noquote("some org summary")
+summary(al1org_farmsizes$frmsize)
+cat("\n")
+noquote("some org SD")
+sd(al1org_farmsizes$frmsize)
+
+# Check that there is no overlap in these two permit sets
+# intersect(conventional_only_permits, atleastoneorg_permits)
+
+```
+

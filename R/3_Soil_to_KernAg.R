@@ -23,6 +23,9 @@ Soil_to_KernAg_fun = function(year){
   ag_slct <- ag_merge %>% 
     dplyr::select(-c(COMM_EDIT,COMM_CODEOLD))
   
+  
+  ######## Soil raster with (few) NAs ##########
+  
   ## Extract values from soil raster that correspond to each polygon in the ag shapefile
   r.vals.na = raster::extract(soil_ras, # Storie Index Raster Values
                            ag_slct, # Extract based on Kern Ag polygon outlines from the Kern Ag shapefile
@@ -38,6 +41,8 @@ Soil_to_KernAg_fun = function(year){
   
   ## Add the mean values to the Kern Agriculture Shapefile
   ag_slct$soil_NA = r.vals.na$layer  
+  
+  ######## Soil raster with no NAs ##########
   
   ## Extract values from soil raster that correspond to each polygon in the ag shapefile
   r.vals.NOna = raster::extract(soil_ras_covered, # Storie Index Raster Values
@@ -55,6 +60,61 @@ Soil_to_KernAg_fun = function(year){
   ## Add the mean values to the Kern Agriculture Shapefile
   ag_slct$soil_noNA = r.vals.NOna$layer  
   
+  ######## Factor X - Chemical Properties ##########
+  
+  ## Extract values from factor x - chemistry soil raster that correspond to each polygon in the ag shapefile
+  r.vals.chem = raster::extract(chem_ras, # Storie Index Raster Values
+                                ag_slct, # Extract based on Kern Ag polygon outlines from the Kern Ag shapefile
+                                fun = mean, # Find the mean value of raster cells that overlap with each polygon
+                                small = TRUE, # Include mean values for small polygons
+                                weights = TRUE, # Add weights for weighted means
+                                normalizeWeights = TRUE,
+                                na.rm = TRUE, # Ignore NAs when calculating mean values -- BUT then need to change 0s back to NAs
+                                df = TRUE) # Return results as a data.frame
+  
+  # Change '0' values to NA
+  r.vals.chem$layer[r.vals.chem$layer == 0] = NA
+  
+  ## Add the mean values to the Kern Agriculture Shapefile
+  ag_slct$soil_chem = r.vals.chem$layer  
+  
+  ######## Factor X - Temperature Properties ##########
+  
+  ## Extract values from factor x - temperature regime soil raster that correspond to each polygon in the ag shapefile
+  r.vals.temp = raster::extract(temp_ras, # Storie Index Raster Values
+                                ag_slct, # Extract based on Kern Ag polygon outlines from the Kern Ag shapefile
+                                fun = mean, # Find the mean value of raster cells that overlap with each polygon
+                                small = TRUE, # Include mean values for small polygons
+                                weights = TRUE, # Add weights for weighted means
+                                normalizeWeights = TRUE,
+                                na.rm = TRUE, # Ignore NAs when calculating mean values -- BUT then need to change 0s back to NAs
+                                df = TRUE) # Return results as a data.frame
+  
+  # Change '0' values to NA
+  r.vals.temp$layer[r.vals.temp$layer == 0] = NA
+  
+  ## Add the mean values to the Kern Agriculture Shapefile
+  ag_slct$soil_temp = r.vals.temp$layer
+  
+  ######## Factor X - Hydrologic Properties ##########
+  
+  ## Extract values from factor x - hydrologic features soil raster that correspond to each polygon in the ag shapefile
+  r.vals.hydro = raster::extract(hydro_ras, # Storie Index Raster Values
+                                ag_slct, # Extract based on Kern Ag polygon outlines from the Kern Ag shapefile
+                                fun = mean, # Find the mean value of raster cells that overlap with each polygon
+                                small = TRUE, # Include mean values for small polygons
+                                weights = TRUE, # Add weights for weighted means
+                                normalizeWeights = TRUE,
+                                na.rm = TRUE, # Ignore NAs when calculating mean values -- BUT then need to change 0s back to NAs
+                                df = TRUE) # Return results as a data.frame
+  
+  # Change '0' values to NA
+  r.vals.hydro$layer[r.vals.hydro$layer == 0] = NA
+  
+  ## Add the mean values to the Kern Agriculture Shapefile
+  ag_slct$soil_hydro = r.vals.hydro$layer
+  
+  ######
   ## Convert back into Shapefile
   ag_shp_withSoil = as(ag_slct, "Spatial")
   

@@ -1,5 +1,5 @@
 ---
-title: "6 Compile data and explore"
+title: "6. Compile data and explore"
 output: html_document
 ---
 
@@ -101,8 +101,7 @@ organics_df_2019 = organics_df_2019 %>%
                 "family" = family.y, 
                 comm_dt,
                 acres,
-                sol_wNA,
-                sol_nNA,
+                sol_wNA,sol_nNA,sol_chm,sol_tmp,sl_hydr,
                 apn,trs_nly,
                 trs_rgP,
                 cdf_rgn,
@@ -155,8 +154,8 @@ table(all_years_df$year)
 
 ## Rename columns with full names
 colnames(all_years_df) = c("permitsite","ag_permit","s_status","p_status","permittee","comm_original","comm_code","agroclass","genus","family",
-                           "comm_edit","acres","soil_NA","soil_noNA","apn_org","trsonly_org","trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org",
-                           "all_org","year","pur_permit","pur_site","n_crops","hectares")
+                           "comm_edit","acres","soil_NA","soil_noNA","soilX_chem","soilX_temp","soilX_hydro","apn_org","trsonly_org",
+                           "trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org","all_org","year","pur_permit","pur_site","n_crops","hectares")
 
 # Write output dta and csv files
 write_dta(all_years_df, "../R_output/CSV/compiled_organics1319.dta")
@@ -195,8 +194,8 @@ table(all_years_shp$year)
 
 # Rename columns
 colnames(all_years_shp) = c("permitsite","ag_permit","s_status","p_status","permittee","comm_original","comm_code","agroclass","genus","family",
-                           "comm_edit","acres","soil_NA","soil_noNA","apn_org","trsonly_org","trspermittee_org","cdfa_org","kerncomm_org","kernpermittee_org",
-                           "all_org","year","pur_permit","pur_site","n_crops","hectares","geometry")
+                           "comm_edit","acres","soil_NA","soil_noNA","soilX_chem","soilX_temp","soilX_hydro","apn_org","trsonly_org","trspermittee_org",
+                           "cdfa_org","kerncomm_org","kernpermittee_org","all_org","year","pur_permit","pur_site","n_crops","hectares","geometry")
 
 # Write output shapefile
 writeOGR(as(all_years_shp,"Spatial"),
@@ -241,7 +240,7 @@ ggplot(mean_hectares,aes(x = year,y = mean_hectares,fill=as.factor(cdfa_org)))+
   scale_fill_manual(values = c("darkgoldenrod2", "#2e4057"), labels = c("Conventional","Organic"))+
   scale_x_continuous(breaks = c(2013:2019))+
   xlab("Year")+
-  ylab("Average Field Size (hectares)")+
+  ylab("Average Field Size (ha)")+
   theme(legend.title = element_blank())
 
 ggplot(mean_hectares, aes(x = year, y = mean_hectares))+
@@ -252,7 +251,7 @@ ggplot(mean_hectares, aes(x = year, y = mean_hectares))+
   scale_x_continuous(breaks = c(2013:2019))+
   xlab("Year")+
   ylim(10,40)+
-  ylab("Average Storie Index Soil Quality Rating \n [1 = highest]")+
+  ylab("Average field size (ha)")+
   theme(legend.title = element_blank())
 ```
 
@@ -304,5 +303,4 @@ ggplot(mean_soil_NA, aes(x = year, y = mean_soilQ))+
   ylab("Average Storie Index Soil Quality Rating \n [1 = highest]")+
   theme(legend.title = element_blank())
 ```
-
 

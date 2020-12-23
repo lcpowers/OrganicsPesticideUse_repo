@@ -90,8 +90,6 @@ for(i in years){
      }
   }
 
-colnames(cdfa_kernag_2013)
-
 ```
 
 #### 3. Perform spatial join between CDFA PLSS sections and Kern County Agriculture Parcels -- Extract Ag parcels that overlap with CDFA sections. 
@@ -183,6 +181,9 @@ for(i in years){
          "acres"=ACRES,
          "soil_wNA"=SOIL_wNA,
          "soil_noNA" = SOIL_nNA,
+         "soil_chem" = SOIL_ch,
+         "soil_temp" = SOIL_tm,
+         "soil_hydr" = SOIL_hy,
          "apn"=CDFA,
          "trs_only" = trs_match,
          "trs_orgPermittee" = trs_orgPermittee_match)
@@ -264,6 +265,7 @@ for(i in years){
    rm(tmp)
 
 }
+
 
 ```
 

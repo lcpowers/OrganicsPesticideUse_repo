@@ -34,7 +34,7 @@ library(sf)
 options(scipen = 999) 
 
 # Read in Pesticide Data 
-pest_data_raw = read_dta("../R_input/dta/KernOrgCollapse1319_062920.dta") %>% 
+pest_data_raw = read_dta("../R_input/dta/KernOrgCollapse1319_062620.dta") %>% 
   as.data.frame() 
 
 # Specify years of interest
