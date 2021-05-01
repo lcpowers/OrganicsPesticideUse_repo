@@ -19,13 +19,6 @@ mpdata = read_dta("../R_input/dta/organicAnalysisPUR.dta") %>% as.data.frame()
   
 map_data <- mpdata %>% filter(year==2019) %>% dplyr::select(permitsite, year, hectares, soil_quality, comm_edit, comm_code2, KgPestAI, KgPestPrd)%>% dplyr::mutate(KgPestAIha=KgPestAI/hectares, KgPestPrdha=KgPestPrd/hectares) %>% dplyr::select(-KgPestAI, -KgPestPrd)
 
-kernfields_2019<-read_sf("../R_input/spatial/kern_AG_shp/kern2019/kern2019.shp") %>% dplyr::select(PMT_SITE, P_STATUS, S_STATUS) %>% dplyr::rename(permitsite=PMT_SITE)
-
-kernfields_2019_spatial<-read_sf("../R_input/spatial/kern_AG_shp/kern2019/kern2019.shp") %>%dplyr::select(PERMIT) %>% distinct() %>% 
-  dplyr::mutate(SpatialID=1:nrow(.)) 
-
-kf_2019<-st_join(kernfields_2019_spatial, kernfields_2019)
-
 top15crops <- map_data %>% dplyr::select(permitsite, comm_code2) %>% group_by(comm_code2) %>% summarize(count=n()) %>% 
   arrange(-count) %>% dplyr::mutate(Order=1:nrow(.)) %>% ungroup() %>% 
   full_join(map_data, by="comm_code2") %>% dplyr::mutate(comm=tolower(ifelse(Order<=15, comm_edit, "Other")))%>% 
@@ -34,8 +27,26 @@ top15crops <- map_data %>% dplyr::select(permitsite, comm_code2) %>% group_by(co
                 comm=ifelse(comm_code2==2008, "tangerine", comm))
   #Make Grape and tangerine with same comm code have same comm edit
 
-mapdf<-full_join(map_data, kernfields_2019, by="permitsite") %>% 
-  full_join(top15crops, by=c("comm_edit", "comm_code2"))%>% st_as_sf()
+kernfields_2019<-read_sf("../R_input/spatial/kern_AG_shp/kern2019/kern2019.shp") %>% 
+  dplyr::select(permitsite=PMT_SITE, P_STATUS, S_STATUS) %>% 
+  dplyr::mutate(Location=as.character(geometry)) 
+#There are: 1824 locations out of 11778 that have more than 1 entry (will be sumamrizing by)
+  #Most rows is 42 (lots of organic multicrops)
+
+joindf<-full_join(map_data, kernfields_2019, by="permitsite") %>% 
+  full_join(top15crops, by=c("comm_edit", "comm_code2"))%>% 
+  dplyr::mutate(comm=ifelse(S_STATUS=="M", "Multicrop", comm)) %>% 
+    st_as_sf()
+
+mapdf<-joindf %>% 
+  group_by(Location) %>% 
+  summarize(hectares=max(hectares, na.rm = TRUE),
+            comm=names(which.max(table(comm))),
+            soil_quality=max(soil_quality, na.rm=TRUE),
+            KgPestPrdha=max(KgPestPrdha, na.rm=TRUE)) %>% 
+  dplyr::mutate(soil_quality=ifelse(soil_quality==-Inf, NA, soil_quality)) %>% 
+  dplyr::select(-Location)
+
 
 write_sf(mapdf, "../R_output/spatial/map_data/mapdf.shp", delete_layer = TRUE)
 ```
