@@ -1,0 +1,263 @@
+---
+title: "9_ReviewerQuestions"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r packages}
+rm(list=ls())
+
+library(tidyverse)
+library(haven)
+library(pastecs)
+library(DT)
+library(kableExtra)
+
+options(scipen = 9999)
+```
+
+
+```{r data}
+### Read in dta file from Ashley -- output of RMD 6 with pesticide use info and IHS transformed data used in analyses added on
+final_data = read_dta("./R_input/dta/organicAnalysisPUR copy.dta") 
+
+# colnames(final_data)
+# table(final_data$year)
+
+# Remove rows of data where plant family not assigned
+# final_data = filter(final_data,family!="")
+
+### Get rid of '-' at end of some commodities in 'comm_edit' column
+# Convert comm_edit column from factor to character
+final_data$comm_edit <- as.character(final_data$comm_edit)
+
+# Separate edited comm column (comm_dt) by dash
+final_data <- final_data %>%
+    separate(col = "comm_edit",
+             into = c("COMM_x","COMM_y"),
+             sep = "-",
+             remove = FALSE)
+
+# Get rid of '-' where it exists at the end of commodity strings
+final_data$comm_edit <- ifelse((final_data$COMM_y==""| # If there is a 0 , "", or NA in the comm_y column from above
+                                     final_data$COMM_y=="O"|
+                                     is.na(final_data$COMM_y)),
+                                  final_data$COMM_x, # Then comm equals the value in comm_x
+                                  final_data$comm_edit) # Otherwise it equals the comm_dt column as is
+
+
+final_data <- dplyr::select(final_data, -c(COMM_x,COMM_y))
+### End fix comm column
+```
+
+
+# Pesticide use based on farmer stats (all organic, some organic, all conventional)
+```{r farmerdecisions}
+
+# Vector of all unique permits
+all_permits <- unique(final_data$permit)
+
+# DF of all conventional all the time
+conv_df <- final_data %>% 
+  group_by(permit,year) %>% # Group by permit
+  filter(all(pur_cdfa_org==0)) %>% # and filter permits out that ever had on org field
+  group_by(permit,permitsite,pur_cdfa_org,year) %>% # Then group by permit, permitsite, org, and year, to find total pest applied to field in each year
+  summarize(pestAI100 = sum(KgPestAIHa100,na.rm=T), # And find the total pest applied
+            pestPRD100 = sum(KgPestPrdHa100,na.rm=T)) %>% 
+  ungroup() %>% 
+  mutate(category="conv")
+conv_permits <- unique(conv_df$permit)
+
+org_df <- final_data %>% 
+  group_by(permit,year) %>% 
+  filter(all(pur_cdfa_org==1)) %>% 
+  group_by(permit,permitsite,pur_cdfa_org,year) %>%
+  summarize(pestAI100 = sum(KgPestAIHa100,na.rm=T),
+            pestPRD100 = sum(KgPestPrdHa100,na.rm=T)) %>% 
+  ungroup() %>% 
+  mutate(category="org")
+org_permits <- unique(org_df$permit)
+
+both1_df <- NULL 
+years <- unique(final_data$year)
+for(yeari in years){
+  cpermits <- conv_df$permit[conv_df$year==yeari]
+  opermits <- org_df$permit[org_df$year==yeari]
+  bothperms <- final_data %>% 
+    filter(year==yeari) %>% 
+    filter(!(permit%in%c(cpermits,opermits)))
+  both1_df <- rbind(both1_df,bothperms)
+}
+both_df <- both1_df %>% 
+  group_by(permit,permitsite,pur_cdfa_org,year) %>%
+  summarize(pestAI100 = sum(KgPestAIHa100,na.rm=T),
+            pestPRD100 = sum(KgPestPrdHa100,na.rm=T)) %>%
+  ungroup() %>%
+  mutate(category="both")
+both_permits <- unique(both_df$permit)
+
+nrow(org_df)+nrow(conv_df)+nrow(both_df) == nrow(final_data)
+
+plot_df <- rbind(org_df,both_df) %>% filter(pestAI100>0)
+table(plot_df$year,plot_df$pur_cdfa_org,plot_df$category)
+
+ggplot(plot_df,aes(x=category,y=pestAI100))+
+  geom_boxplot(aes(color=category))+
+  theme_classic(base_size = 18)+
+  scale_color_manual(values=c("steelblue","springgreen4"), labels=c("Conv + Org Farm","All Org farm"))+
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.text = element_text(size=20))+
+  labs(x="", y = 'Mean Annual PestAI100 on organic fields',fill="")+
+  scale_y_continuous(labels = scales::comma)+
+  facet_wrap(~year,scales='free')
+
+plot_df2 <- plot_df %>% 
+  filter(pestAI100>0) %>% 
+  filter(pur_cdfa_org==1) %>% 
+  group_by(year,category) %>% 
+  summarize(meanAI = mean(pestAI100),
+            nfields = n())
+
+ggplot(plot_df2,aes(x=category,y=meanAI))+
+  geom_col(aes(fill=category))+
+  theme_classic(base_size = 18)+
+  scale_fill_manual(values=c("steelblue","springgreen4"), labels=c("Conv + Org Farm","All Org farm"))+
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        legend.text = element_text(size=20))+
+  labs(x="", y = 'Mean Annual PestAI100 on organic fields',fill="")+
+  scale_y_continuous(labels = scales::comma)+
+  facet_wrap(~year)
+
+
+
+```
+
+# Summary stats for all org, all conventional farms
+```{r}
+org_summary <- final_data %>% 
+  group_by(permit,year) %>% 
+  filter(all(pur_cdfa_org==1)) %>% 
+  ungroup(.) %>% 
+  group_by(year) %>% 
+  summarise(total_fields = n(),
+            avg_fieldsz = mean(hectares) %>% round(.,2), # Mean field size in hectares
+            # se_fieldsz = sd(hectares)/sqrt(length(hectares)) %>% round(.,2), # mean of average in he
+            avg_soilq = mean(soil_quality,na.rm = T) %>% round(.,2), # avg soil quality
+            # se_soilq = sd(soil_quality, na.rm = T)/sqrt(length(soil_quality[!is.na(soil_quality)])) %>% round(.,2), # SE of mean soil quality
+            avg_aihe = mean(KgPestAI/hectares,na.rm=T) %>% round(.,2)) %>% 
+            # se_ai = sd(KgPestAI/hectares,na.rm=T)/sqrt(length(KgPestPrd/hectares)) %>% round(.,2)) %>% round(.,2)%>% 
+            #avg_prdhe = mean(KgPestPrd/hectares,na.rm=T),
+            #se_prd = sd(KgPestPrd/hectares,na.rm=T)/sqrt(length(KgPestPrd/hectares))) %>% 
+  as.data.frame(.) %>% 
+  mutate(FarmType="Organic")
+
+
+both_summary <- both1_df %>% 
+  filter(pur_cdfa_org==1) %>% 
+  group_by(year) %>% 
+  summarise(total_fields = n(),
+            avg_fieldsz = mean(hectares) %>% round(.,2), # Mean field size in hectares
+            # se_fieldsz = sd(hectares)/sqrt(length(hectares)) %>% round(.,2), # mean of average in he
+            avg_soilq = mean(soil_quality,na.rm = T) %>% round(.,2), # avg soil quality
+            # se_soilq = sd(soil_quality, na.rm = T)/sqrt(length(soil_quality[!is.na(soil_quality)])) %>% round(.,2), # SE of mean soil quality
+            avg_aihe = mean(KgPestAI/hectares,na.rm=T) %>% round(.,2)) %>% 
+            # se_ai = sd(KgPestAI/hectares,na.rm=T)/sqrt(length(KgPestPrd/hectares)) %>% round(.,2)) %>% 
+            #avg_prdhe = mean(KgPestPrd/hectares,na.rm=T),
+            #se_prd = sd(KgPestPrd/hectares,na.rm=T)/sqrt(length(KgPestPrd/hectares))) %>% 
+  as.data.frame(.) %>% 
+  mutate(FarmType="Org & Conv")
+
+annual_organic_compare_summary <- rbind(org_summary,both_summary) %>% arrange(.,year)
+write_csv(annual_organic_compare_summary,"./R_output/CSV/annual_org_compare.csv")
+
+kable(annual_organic_compare_summary, 
+             col.names = c("Year",
+                           "Total Fields",
+                           "Avg. Field Size (he)",
+                           "Avg. Soil Quality",
+                           "Avg. Active Ingredients/he",
+                           "Farm Type")) %>% kable_styling()
+# datatable(annual_organic_compare_summary)
+
+org_summary <- final_data %>% 
+  group_by(permit,year) %>% 
+  filter(all(pur_cdfa_org==1)) %>% 
+  ungroup(.) %>% 
+  summarise(total_fields = n(),
+            avg_fieldsz = mean(hectares) %>% round(.,2), # Mean field size in hectares
+            # se_fieldsz = sd(hectares)/sqrt(length(hectares)) %>% round(.,2), # mean of average in he
+            avg_soilq = mean(soil_quality,na.rm = T), # avg soil quality
+            # se_soilq = sd(soil_quality, na.rm = T)/sqrt(length(soil_quality[!is.na(soil_quality)])) %>% round(.,2), # SE of mean soil quality
+            avg_aihe = mean(KgPestAI/hectares,na.rm=T)) %>% round(.,2) %>% 
+            # se_ai = sd(KgPestAI/hectares,na.rm=T)/sqrt(length(KgPestPrd/hectares)))  %>% round(.,2)%>% 
+            #avg_prdhe = mean(KgPestPrd/hectares,na.rm=T),
+            #se_prd = sd(KgPestPrd/hectares,na.rm=T)/sqrt(length(KgPestPrd/hectares))) %>% 
+  as.data.frame(.) %>% 
+  mutate(FarmType="Organic")
+
+
+both_summary <- both1_df %>% 
+  filter(pur_cdfa_org==1) %>% 
+  summarise(total_fields = n(),
+            avg_fieldsz = mean(hectares) %>% round(.,2), # Mean field size in hectares
+            # se_fieldsz = sd(hectares)/sqrt(length(hectares)) %>% round(.,2), # mean of average in he
+            avg_soilq = mean(soil_quality,na.rm = T) %>% round(.,2), # avg soil quality
+            # se_soilq = sd(soil_quality, na.rm = T)/sqrt(length(soil_quality[!is.na(soil_quality)])) %>% round(.,2), # SE of mean soil quality
+            avg_aihe = mean(KgPestAI/hectares,na.rm=T)) %>% round(.,2) %>% 
+            # se_ai = sd(KgPestAI/hectares,na.rm=T)/sqrt(length(KgPestPrd/hectares))) %>% round(.,2) %>% 
+            #avg_prdhe = mean(KgPestPrd/hectares,na.rm=T),
+            #se_prd = sd(KgPestPrd/hectares,na.rm=T)/sqrt(length(KgPestPrd/hectares))) %>% 
+  as.data.frame(.) %>% 
+  mutate(FarmType="Org & Conv")
+
+alltime_organic_compare_summary <- rbind(org_summary,both_summary)
+write_csv(alltime_organic_compare_summary,"./R_output/CSV/alltime_org_compare.csv")
+
+# datatable(alltime_organic_compare_summary)
+```
+
+
+# Farms (Permit IDs) through time
+```{r permsthrutime}
+
+# Get all unique years
+years <- unique(final_data$year)
+# See what proportion of all fields are organic in all data (0.09)
+sum(final_data$pur_cdfa_org)/nrow(final_data)
+
+# Filter for permitsite values that are present in all years
+allyrsperms <- final_data %>% 
+  group_by(permitsite) %>% 
+  filter(all(years%in%year)) 
+# See what proportion of these are organics (0.02)
+sum(allyrsperms$pur_cdfa_org)/nrow(allyrsperms) 
+
+# Find out which permitsites were present in all years and transitioned btwn org and conventional
+org_conv_transition <- allyrsperms %>% 
+  group_by(permitsite) %>% 
+  summarise(orgprop = mean(pur_cdfa_org)) %>% 
+  filter(orgprop>0&orgprop<1)
+
+# 209 permit sites transition. 
+sum(allyrsperms$pur_cdfa_org)/nrow(allyrsperms)
+
+# Now filter final_data for permitsites that transition
+transperms <- unique(org_conv_transition$permitsite)
+
+transperms_df <- final_data %>% 
+  filter(permitsite%in%transperms) %>% 
+  select(permitsite,year,pur_cdfa_org,comm_edit,agroclass)
+
+ggplot(transperms_df,aes(x=year,y=pur_cdfa_org))+
+  geom_line(aes(color=as.factor(permitsite)))+
+  theme(legend.position = "none")
+
+
+```
+
