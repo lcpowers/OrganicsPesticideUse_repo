@@ -10,7 +10,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-**The purpose of this Rmarkdown document is to add soil quality data to the Kern County Agriculture Polygons for each year. Soil Quality data is based on the Storie Index, which is a metric derived from SSURGO soil data. The shapefile was accessed at DataBasin.org**
+**The purpose of this Rmarkdown document is to add soil quality data to the Kern County Agriculture Polygons for each year. Soil Quality data is based on the Storie Index, which is a metric stored in SSURGO soil tabular data**
 
 **Notes:**   
 

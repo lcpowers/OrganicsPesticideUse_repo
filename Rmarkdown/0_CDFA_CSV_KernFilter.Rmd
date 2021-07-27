@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 **Notes:**
 
-The data being read in with the read_csv() function is the original CDFA data. In the original data, years 2013-2017 were separated by tabs in the same Excel (.xcls) sheet. Prior to being read in to this Rmarkdown document, each tab was made into it's own individual .csv file in Excel. Years 2018 and 2019 were received in PDF format. We used Adobe tools to convert the PDFs to .csv files. No edits were made to the data. 
+The data being read in with the read_csv() function is the original CDFA data. In the original data, years 2013-2017 were separated by tabs in the same Excel (.xcls) sheet. Prior to being read in to this Rmarkdown document, each tab was made into it's own individual .csv file in Excel. Years 2018 and 2019 were received in PDF format. We used Adobe tools to convert the PDFs to .csv files. 
 
 **Output:**
 

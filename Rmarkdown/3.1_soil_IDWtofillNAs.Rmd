@@ -7,6 +7,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+**The purpose of this Rmarkdown document is to use inverse distance weighting (IDW) to fill polygons with NA Storie Index values (created in RMD 3.1 (n ~= 300). Leave one out cross validation is used to validate method **
 
 # Packages
 ```{r packages}
@@ -16,22 +17,20 @@ library(sp)
 library(gstat)
 library(raster)
 library(rgdal)
-library(rspatial)
 ```
 
 
-####
 ## 1) Read in and prepare input soil data
 ```{r soil_data}
-# Read in original soil shapefile
+# Read in soil shapefile generated in RMD 3.0
 soil_sf = read_sf("../R_input/spatial/SSURGOsoil/storie_index_soil.shp")
 
 # soil_factx_sf <- read_sf("../R_input/spatial/SSURGOsoil/storie_index_factorX.shp")
 
-# Read in soil raster, rasterized version of original soil data
+# Read in soil raster, rasterized version of soil data generated in 3.0
 soil_ras = raster("../R_output/spatial/SoilRaster/soil_ras.tif")
 
-# Crop to soil_sf (these were very slightly different on the eastern boundary)
+# Crop soil_ras to soil_sf (very slightly different on the eastern boundary)
 soil_ras = raster::crop(soil_ras, extent(soil_sf))
 
 # Plot to check
@@ -80,10 +79,11 @@ timestamp()
 P.idw = gstat::idw(formula = soil_ras ~ 1, locations = soil_points, newdata = Grid, idp = 2, nmax = 50)
 r = raster(P.idw)
 
+# Mask raster to outline of soil_sf
 r_mask <- mask(r,soil_sf)
-writeRaster(r_mask,"../R_output/spatial/SoilRaster/soil_ras_IDW.tif", overwrite = T)
+# Write output to spot check in QGIS
+# writeRaster(r_mask,"../R_output/spatial/SoilRaster/soil_ras_IDW.tif", overwrite = T)
 
-timestamp()
 ```
 
 ## 4) Cross-validate results using Leave One Out Cross validation
@@ -97,15 +97,11 @@ random_sample = sample(x = 1:length(soil_points),size = cv_length, replace = F)
 ### Initialize dataframe to store CV results
 IDW.out <- vector(length = cv_length)
 
-
 for (i in 1:length(random_sample)) {
   
   IDW.out[i] <- idw(soil_ras ~ 1, soil_points[-(random_sample[i]),], soil_points[random_sample[i],], idp=2)$var1.pred
   
   }
-
-timestamp()
-
 ```
 
 

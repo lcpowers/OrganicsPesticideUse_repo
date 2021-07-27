@@ -29,9 +29,7 @@ library(tidyverse)
 library(rgdal) 
 library(sf) 
 
-# Bring in function stored in the '3_KernCountyParcel_CDFA_join.R' script. If editing that 
-# function, check the box that says 'source on save' to upload that latest version of the 
-# function in this Rmarkdown document
+# Load function stored in the '3_KernCountyParcel_CDFA_join.R' script. 
 source("../R/2_KernCountyParcel_CDFA_join.R")
 
 # Read in Kern County Parcel data and transform Kern County Parcel data into the correct CRS for project. CA Teale Albers 2011

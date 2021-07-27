@@ -20,14 +20,13 @@ knitr::opts_chunk$set(echo = TRUE)
       
   * This code uses a function stored in the "1_APN_edit.R" file to edited APN values. The function takes the original APN values and puts them into a '123-456-78' format to match the format of those in the Kern County Parcel shapefile attribute table
   * APN edit methods were evaluated on the number of matches made between CDFA APNs and Kern County Parcel data, and the accuracy of those matches was evaluated based on comparison of the Permittee and Company columns, respectively. 
-  * In some instances, the Permittee and Company columns did not match. Further research showed that this was often the result of parent companies owning smaller companies i.e. Parent company Grimmway Farms which owns Crystal Organics, based on records found on the internet <https://www.scscertified.com/fff/viewsupplier.php?id=776>;<https://www.growingproduce.com/vegetables/grower-experienced-in-biocontrols-says-be-patient/>. 
-
+  * In some instances, the Permittee and Company columns did not match. Further research showed that this was often the result of parent companies owning smaller companies
+  
 **Output:**
 
 * CSV files of CDFA original and edited APNs in R_input and R_output files 
   - ../R_output/CSV/CDFA/final_APN/CDFA_APNs_[YEAR].csv
   - ../R_input/CSV/CDFA/final_APN/CDFA_APNs_[YEAR].csv
-
 
 ---
 
