@@ -7,6 +7,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+**This document explores how many farms manage only organic, only conventional, or both organic and conventational fields, in response to reviewer inquiries**
 
 ```{r packages}
 rm(list=ls())
@@ -222,41 +223,4 @@ write_csv(alltime_organic_compare_summary,"./R_output/CSV/alltime_org_compare.cs
 ```
 
 
-# Farms (Permit IDs) through time
-```{r permsthrutime}
-
-# Get all unique years
-years <- unique(final_data$year)
-# See what proportion of all fields are organic in all data (0.09)
-sum(final_data$pur_cdfa_org)/nrow(final_data)
-
-# Filter for permitsite values that are present in all years
-allyrsperms <- final_data %>% 
-  group_by(permitsite) %>% 
-  filter(all(years%in%year)) 
-# See what proportion of these are organics (0.02)
-sum(allyrsperms$pur_cdfa_org)/nrow(allyrsperms) 
-
-# Find out which permitsites were present in all years and transitioned btwn org and conventional
-org_conv_transition <- allyrsperms %>% 
-  group_by(permitsite) %>% 
-  summarise(orgprop = mean(pur_cdfa_org)) %>% 
-  filter(orgprop>0&orgprop<1)
-
-# 209 permit sites transition. 
-sum(allyrsperms$pur_cdfa_org)/nrow(allyrsperms)
-
-# Now filter final_data for permitsites that transition
-transperms <- unique(org_conv_transition$permitsite)
-
-transperms_df <- final_data %>% 
-  filter(permitsite%in%transperms) %>% 
-  select(permitsite,year,pur_cdfa_org,comm_edit,agroclass)
-
-ggplot(transperms_df,aes(x=year,y=pur_cdfa_org))+
-  geom_line(aes(color=as.factor(permitsite)))+
-  theme(legend.position = "none")
-
-
-```
 

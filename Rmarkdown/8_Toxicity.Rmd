@@ -9,6 +9,8 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+**This Rmarkdown document explores ways to generate summary ecotoxicological data for pesticides based on their CAS #s. In responses to reviewers we focus on results from the code chunk titles "aqEndpoints", but leave other code in this document for future reference and in case it is of interest to others.** 
+
 Useful References:
 
 Standartox Package:
@@ -112,55 +114,19 @@ rm(list=ls())
 ```
 
 
+#### Aquatic Endpoints ####
 
-# 1. Find CAS #s with valid ecotox data using webchem, then see if possible to find errors in non-matching cas #s
-```{r getEcotox}
-# # Read in CAS CSV data from Ashley
-# cas_data<-read_csv("./R_input/CSV/PesticideUse/KernChemsUsed1319_Cas.csv") 
-# 
-# # Create a new column of NAs, where boolean for valid cas will be stored
-# cas_data <- cas_data %>% mutate(validcas=NA)
-# etoxs <- NULL
-# for(i in 1:nrow(cas_data)){
-#   
-#   cas <- cas_data$casnum[i]
-#   cas_data$validcas[i] <- is.cas(cas)
-#   etox <- get_etoxid(cas,from = c("cas"))
-#   etoxs <- rbind(etoxs,etox)
-#   rm(cas,etox)
-#   }
-# 
-# # Filter CAS data to keep those without a valid ecotox ID match
-# casdata_nomatch <- cas_data %>% filter(is.na(validcas)|validcas==FALSE)
-# 
-# # See if we can find matches with names for those
-# casdata_namematch <- NULL
-# for(i in 1:nrow(casdata_nomatch )){
-#   
-#   name <- tolower(casdata_nomatch$chemname[i])
-#   cas <- tolower(casdata_nomatch$casnum[i])
-#   etox <- get_etoxid(query = name,from = c("name"))
-#   casdata_namematch <- rbind(casdata_namematch,cbind(etox,cas))
-# }
-# 
-# colnames(etoxs)[1]<-"casnum"
-# 
-# chemetox <- inner_join(chems,etoxs,by="casnum") %>% unique()
-# df <- as.data.frame(table(chemetox$validcas,chemetox$PURcas))
-```
+Nowell data
+```{r nowell}
 
+nowell <- read_csv("./R_input/CSV/PesticideUse/NowellToPURSleuth.csv") %>% 
+  filter(PurNowell=='matched (3)'|PurNowell=='master only (1)')
+nowell_match <- filter(nowell,PurNowell=='matched (3)')
 
-```{r CASdata}
-### Read in cas data from Ashley
-cas_data<-read_csv("./R_input/CSV/PesticideUse/KernChemsUsed1319_Cas.csv")
-casdf<-cas_data %>% 
-  filter(!is.na(casnum))
-uniqcas<-unique(casdf$casnum)
+nonmissingcas <- c(nowell_match$casnum,fishdata$cas) %>% unique()
 
-#Read in standartox catalog
-require(standartox)
-catal = stx_catalog()
-# names(catal)
+missingcas <- cas_data %>% 
+  filter(!(casnum%in%nonmissingcas))
 
 ```
 
@@ -225,7 +191,7 @@ fish_query = stx_query(endpoint = 'XX50',
               effect="mortality",
               duration = 96)
 
-dat <- fish_query$filtered
+#### Any data from 96 hr LC 50 aquatic tests ####
 
 fishdata = fish_query$filtered %>% 
   filter(cas%in%uniqcas) %>% 
@@ -241,24 +207,64 @@ fishNowell <- left_join(nowell,fishdata,by="casnum") %>%
 write_csv(fishNowell, "R_input/CSV/PesticideUse/FishTox.csv")
 ```
 
-Nowell data
-```{r nowell}
 
-nowell <- read_csv("./R_input/CSV/PesticideUse/NowellToPURSleuth.csv") %>% 
-  filter(PurNowell=='matched (3)'|PurNowell=='master only (1)')
-nowell_match <- filter(nowell,PurNowell=='matched (3)')
+########
 
-nonmissingcas <- c(nowell_match$casnum,fishdata$cas) %>% unique()
 
-missingcas <- cas_data %>% 
-  filter(!(casnum%in%nonmissingcas))
+#### Trying out webchem and standartox package ####
+
+```{r CASdata}
+### Read in cas data from Ashley
+cas_data<-read_csv("./R_input/CSV/PesticideUse/KernChemsUsed1319_Cas.csv")
+casdf<-cas_data %>% 
+  filter(!is.na(casnum))
+uniqcas<-unique(casdf$casnum)
+
+#Read in standartox catalog
+require(standartox)
+catal = stx_catalog()
+# names(catal)
 
 ```
 
+# Find CAS #s with valid ecotox data using webchem, then see if possible to find errors in non-matching cas #s
+```{r getEcotox}
+# # Read in CAS CSV data from Ashley
+# cas_data<-read_csv("./R_input/CSV/PesticideUse/KernChemsUsed1319_Cas.csv") 
+# 
+# # Create a new column of NAs, where boolean for valid cas will be stored
+# cas_data <- cas_data %>% mutate(validcas=NA)
+# etoxs <- NULL
+# for(i in 1:nrow(cas_data)){
+#   
+#   cas <- cas_data$casnum[i]
+#   cas_data$validcas[i] <- is.cas(cas)
+#   etox <- get_etoxid(cas,from = c("cas"))
+#   etoxs <- rbind(etoxs,etox)
+#   rm(cas,etox)
+#   }
+# 
+# # Filter CAS data to keep those without a valid ecotox ID match
+# casdata_nomatch <- cas_data %>% filter(is.na(validcas)|validcas==FALSE)
+# 
+# # See if we can find matches with names for those
+# casdata_namematch <- NULL
+# for(i in 1:nrow(casdata_nomatch )){
+#   
+#   name <- tolower(casdata_nomatch$chemname[i])
+#   cas <- tolower(casdata_nomatch$casnum[i])
+#   etox <- get_etoxid(query = name,from = c("name"))
+#   casdata_namematch <- rbind(casdata_namematch,cbind(etox,cas))
+# }
+# 
+# colnames(etoxs)[1]<-"casnum"
+# 
+# chemetox <- inner_join(chems,etoxs,by="casnum") %>% unique()
+# df <- as.data.frame(table(chemetox$validcas,chemetox$PURcas))
+```
 
 
 ####### Sofie's tox code #######
-
 
 (1) freshwater fish LC50 (rainbow trout),
 
