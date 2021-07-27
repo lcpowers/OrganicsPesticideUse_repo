@@ -7,7 +7,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-**The purpose of this Rmarkdown file is to create summary tables from the final dataset from RMD 6.**  
+**The purpose of this Rmarkdown file is to create summary tables from the final dataset from RMD 6 that is joined with pesticide use data in Stata before reading back in here**  
 
 **Input:**
 ../R_input/dta/organicAnalysisPUR copy.dta
@@ -32,6 +32,7 @@ rm(list=ls())
 
 ```{r data}
 ### Read in dta file from Ashley -- output of RMD 6 with pesticide use info and IHS transformed data used in analyses added on
+## WILL NEED TO CHECK AND EDIT INPUT FILENAME HERE
 final_data = read_dta("../R_input/dta/organicAnalysisPUR.dta") %>% as.data.frame()
 
 ```
@@ -183,8 +184,6 @@ farms = final_data %>%
             .groups='keep') %>% 
   group_by(permit) %>% 
   summarise(FS )
-
-mean(farms$frmsize)
 
 df = final_data %>% # Get all data
     filter(!is.na(soil_quality)) %>% 
