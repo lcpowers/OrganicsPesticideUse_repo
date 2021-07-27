@@ -16,13 +16,12 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ---
 
-#### 1. Get Packages, set working directory, etc. 
+#### 1. Get Packages
 ```{r packages}
 library(tidyverse)
 library(rgdal)
 library(sf)
 library(haven)
-# library(ggplot2) Isn't this part of tidyverse?
 
 # Read in pesticide use data
 pest_data_raw = read_dta("../R_input/dta/KernFieldCrops1319.dta") %>% 
