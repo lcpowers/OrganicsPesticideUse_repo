@@ -45,7 +45,7 @@ library(cleangeo)
 source("../R/4_KernAg_CDFA_Join.R")
 ```
 
-#### 2. Implement the function that performs a spatial join between APN-identified CDFA parcels and Kern Agriculture parcels for specific years and desired buffer width. See notes in the following code chunk for more information about buffer widths and how 50m was determined
+#### 2. Implement function that performs a spatial join between APN-identified CDFA parcels and Kern Agriculture parcels for specific years and desired buffer width. See notes in the following code chunk for more information about buffer widths and how 50m was determined
 ```{r implement_function, message=FALSE, warning=FALSE}
 # Years of interest
 years = 2013:2019
