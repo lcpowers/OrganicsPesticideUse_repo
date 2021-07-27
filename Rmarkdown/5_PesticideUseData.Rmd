@@ -45,7 +45,7 @@ buf_width = c(50)
 ```
 
 
-#### 2. Create pesticide use dataframes for each year from original, compiled data set
+#### 2. Create pesticide use dataframes for each year from original compiled data set
 ```{r pest_dataframes, message=FALSE}
 
 #### For loop to create dataframes of pesticide use for each year from 2013:2019
