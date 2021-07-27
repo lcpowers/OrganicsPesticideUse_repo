@@ -16,7 +16,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ---
 
-#### 1. Get Packages
+#### 1. Packages
 ```{r packages}
 library(tidyverse)
 library(rgdal)
