@@ -1,8 +1,8 @@
-Will update README soon after August 19th
+*Will update README soon after August 19th*
 
-File structure
+### File structure
 
-**All file pathways are relative to the inside of the Rmarkdown folder**
+*All file pathways are relative to the inside of the Rmarkdown folder*
 
 #### R
   This folder contains documents/scripts with functions used on RMD files. The numerical prefix corresponds to the numerical prefix of the RMD document in which the functions are used
