@@ -1,17 +1,17 @@
-Will update README ASAP
+Will update README soon after August 19th
 
-organics_repo file structure
+File structure
 
-**All file pathways are relative to the inside of the Rmarkdown folder **
+**All file pathways are relative to the inside of the Rmarkdown folder**
 
 #### R
-  This folder contains 4 .R documents/scripts that contain functions used on RMD files. The numerical prefix corresponds to the numerical prefix of the RMD document in which it is used
+  This folder contains documents/scripts with functions used on RMD files. The numerical prefix corresponds to the numerical prefix of the RMD document in which the functions are used
 
 #### R_input
-  This folder contains input files. It is too big to load onto and store on GitHub, but is in a zip folder on Google Drive
+  This folder contains input files. With the appropriate initial input files, additional files will be stored in this folder as one works through the code. 
   
 #### R_output
-  Folder that output files are written to. These also serve as input files as they are created. The folder should intiate automatically as you run through the RMD
+  Folder that output files are written to. Many of these also serve as input files as they are created. The folder should intiate automatically as you run through the code
   
 #### Rmarkdown
   This contains all the Rmarkdown files. The numerical prefix indicates the order in which to use these (and also the .R file that is sourced, if any)
