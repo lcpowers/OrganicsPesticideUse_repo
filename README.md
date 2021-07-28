@@ -2,7 +2,7 @@ Will update README ASAP
 
 organics_repo file structure
 
-****** All file pathways are relative to the inside of the Rmarkdown folder *******
+**All file pathways are relative to the inside of the Rmarkdown folder **
 
 #### R
   This folder contains 4 .R documents/scripts that contain functions used on RMD files. The numerical prefix corresponds to the numerical prefix of the RMD document in which it is used
