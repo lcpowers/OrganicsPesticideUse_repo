@@ -1,5 +1,3 @@
-*Will update README soon after August 19th*
-
 ### File structure
 
 *All file pathways are relative to the inside of the Rmarkdown folder*
